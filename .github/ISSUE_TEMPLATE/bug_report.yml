@@ -1,0 +1,79 @@
+name: Bug report
+description: Report a reproducible problem in Trosive
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug. Never include confidential documents, credentials, personal data, or other sensitive content.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+        - label: I have removed or redacted all sensitive information.
+          required: true
+        - label: I agree to follow the Code of Conduct.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Document upload or processing
+        - AI analysis or chat
+        - Authentication or account
+        - User interface
+        - Developer tooling or build
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Explain the problem and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest reproducible sequence using synthetic or redacted data.
+      placeholder: |
+        1. Go to ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected to happen.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Version or commit
+      description: Provide the deployed version or commit SHA when known.
+      placeholder: v0.1.0 or abc1234
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include browser, operating system, Node.js version, and hosting environment as relevant.
+      placeholder: Chrome 140, Windows 11, Node.js 22.13.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Add redacted logs or screenshots if they help explain the issue.

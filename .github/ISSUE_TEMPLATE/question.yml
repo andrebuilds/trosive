@@ -1,0 +1,35 @@
+name: Question
+description: Ask about using, developing, or contributing to Trosive
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched the documentation and existing issues first.
+          required: true
+        - label: I have removed or redacted all sensitive information.
+          required: true
+        - label: I agree to follow the Code of Conduct.
+          required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Ask one focused question and explain what you are trying to achieve.
+    validations:
+      required: true
+  - type: textarea
+    id: attempts
+    attributes:
+      label: What have you tried?
+      description: Share relevant steps, documentation, or redacted examples.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include versions or platform details when relevant.
+      placeholder: Node.js 22.13.0, npm 11, Windows 11

@@ -1,5 +1,9 @@
 # Trosive
 
+[![CI](https://github.com/andrebuilds/trosive/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/andrebuilds/trosive/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 Trosive is an open-source project for AI-assisted document analysis. It is
 designed to help people upload a PDF or another text-based document, understand
 its contents, and ask questions through a conversational interface.
@@ -60,10 +64,15 @@ the organization.
 
 ## Local development
 
-Install the dependencies and start the development server:
+Requirements:
+
+- Node.js `22.13.0` or newer in the Node.js 22 line, or Node.js 24+
+- npm
+
+Install the locked dependency versions and start the development server:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -71,14 +80,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Available scripts
 
-| Command             | Description                        |
-| ------------------- | ---------------------------------- |
-| `npm run dev`       | Start the local development server |
-| `npm run build`     | Create a production build          |
-| `npm run start`     | Run the production build           |
-| `npm run lint`      | Run ESLint                         |
-| `npm run typecheck` | Check TypeScript types             |
-| `npm run format`    | Format TypeScript and TSX files    |
+| Command                | Description                         |
+| ---------------------- | ----------------------------------- |
+| `npm run dev`          | Start the local development server  |
+| `npm run build`        | Create a production build           |
+| `npm run start`        | Run the production build            |
+| `npm run lint`         | Run ESLint                          |
+| `npm run typecheck`    | Check TypeScript types              |
+| `npm run format`       | Format TypeScript and TSX files     |
+| `npm run format:check` | Check TypeScript and TSX formatting |
 
 ## Roadmap
 
@@ -99,3 +109,14 @@ information with a qualified professional.
 ## Contributing
 
 Trosive is at an early stage. Focused issues and pull requests are welcome.
+
+Read the [contributing guide](CONTRIBUTING.md) before starting. Participation is
+governed by the [Code of Conduct](CODE_OF_CONDUCT.md). Use the repository issue
+forms for bugs, feature requests, and questions, and follow the
+[security policy](SECURITY.md) for private vulnerability reports.
+
+## License
+
+Trosive is released under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Andrea D'Ambrosio.

@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose an improvement to Trosive
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for proposing an improvement. Describe the need before prescribing an implementation so alternatives can be considered.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+        - label: This request does not contain confidential or personal information.
+          required: true
+        - label: I agree to follow the Code of Conduct.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need or limitation would this feature address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Describe the behavior or result you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds or other approaches you considered.
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be interested in implementing this after discussion?
+      options:
+        - Yes
+        - Maybe, with guidance
+        - No
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add redacted mockups, examples, or related links when useful.

@@ -1,14 +1,29 @@
 {
   "name": "trosive",
   "version": "0.0.1",
-  "type": "module",
+  "description": "Open-source AI-assisted document analysis.",
   "private": true,
+  "license": "MIT",
+  "author": "Andrea D'Ambrosio (@andrebuilds)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrebuilds/trosive.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andrebuilds/trosive/issues"
+  },
+  "homepage": "https://trosive.com",
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,7 +31,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.39.0",
-    "next": "16.2.6",
+    "next": "16.3.4",
     "next-themes": "^0.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -30,7 +45,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.3.4",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4",
