@@ -41,3 +41,4 @@ next-env.d.ts
 
 # private notes — move to .git/info/exclude before the repo goes public
 *.private.md
+.neon

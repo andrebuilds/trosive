@@ -1,15 +1,24 @@
+import {
+  LayersIcon,
+  ShieldCheckIcon,
+  WorkflowIcon,
+  type LucideIcon,
+} from "lucide-react"
+
 export type NavItem = {
   href: string
   label: string
+  icon?: LucideIcon
 }
 
 export const siteConfig = {
   name: "Trosive",
   description:
-    "Trosive turns scattered docs into a single searchable workspace your team can trust.",
-  /** AGPL §13: whoever runs this as a service must offer its source — point this at your fork. */
+    "Ask your documents anything and get answers that cite the exact passage behind every claim. Open source.",
+  /** AGPL §13: whoever runs this as a service must offer its source, so point this at your fork. */
   repoUrl: "https://github.com/andrebuilds/trosive",
   license: "AGPL-3.0",
+  email: "hello@trosive.com",
   author: { name: "Andrea D'Ambrosio", url: "https://github.com/andrebuilds" },
 }
 
@@ -20,10 +29,9 @@ export type NavGroup = {
 
 /** Primary marketing navigation, shared by the header and the mobile drawer. */
 export const mainNav: NavItem[] = [
-  { href: "#product", label: "Product" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#security", label: "Security" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "#product", label: "Product", icon: LayersIcon },
+  { href: "#how-it-works", label: "How it works", icon: WorkflowIcon },
+  { href: "#security", label: "Security", icon: ShieldCheckIcon },
 ]
 
 /** Link columns in the site footer. */

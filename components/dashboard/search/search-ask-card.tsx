@@ -37,7 +37,7 @@ function SearchAskCard({
       href={askHref(query, chatId)}
       className="group flex items-center gap-4 rounded-xl border border-dashed bg-surface px-5 py-4 transition-colors hover:border-brand/50 hover:bg-accent/40"
     >
-      {/* The mark carries its own dark tile, so it doesn't need a wrapper. */}
+      {/* The mark is a solid shape on its own, so it doesn't need a wrapper. */}
       <TrosiveMark className="size-10 shrink-0" />
 
       <span className="min-w-0 flex-1">

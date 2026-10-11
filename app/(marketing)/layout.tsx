@@ -20,7 +20,9 @@ export default async function MarketingLayout({
     >
       <div className="flex min-h-svh flex-col">
         <SiteHeader />
-        <main className="flex-1">{children}</main>
+        {/* A flex column, so a page can grow to fill the space between
+            header and footer (the hero centers itself in it). */}
+        <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter />
       </div>
     </AuthDialogProvider>

@@ -35,7 +35,7 @@ const columns = [
 
 /**
  * Status travels as a dot *and* a word, so the meaning survives for anyone who
- * can't separate the amber from the grey.
+ * can't separate the accent from the grey.
  */
 const STATUS: Record<
   AdminUserStatus,

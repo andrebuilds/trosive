@@ -8,8 +8,7 @@ import { HomeSection } from "@/components/dashboard/home/home-section"
 
 /**
  * Indexing state travels as a dot *and* a word: the dot alone would be colour
- * on its own, and the amber sits under 3:1 against the card, so the label
- * carries the meaning in text ink.
+ * on its own, so the label carries the meaning in text ink.
  */
 const STATUS: Record<DocumentStatusView, { label: string; dot: string }> = {
   READY: { label: "Indexed", dot: "bg-brand" },

@@ -12,7 +12,8 @@ function ThemeProvider({
       attribute="class"
       defaultTheme="system"
       enableSystem
-      disableTransitionOnChange
+      // No `disableTransitionOnChange`: it would also cancel the sun/moon
+      // rotation in `ModeToggle`.
       {...props}
     >
       <ThemeHotkey />

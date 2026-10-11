@@ -19,7 +19,7 @@ import { LibraryRowActions } from "@/components/dashboard/library/library-row-ac
 
 /**
  * Indexing state travels as a dot *and* a word, so the meaning survives for
- * anyone who can't separate the amber from the red.
+ * anyone who can't separate the accent from the red.
  */
 const STATUS: Record<
   DocumentStatusView,

@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { MenuIcon } from "lucide-react"
+import { ArrowRightIcon, LogInIcon, MenuIcon } from "lucide-react"
 
 import { useSession } from "@/lib/auth-client"
-import type { NavItem } from "@/lib/site-config"
+import { mainNav } from "@/lib/site-config"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -21,15 +21,12 @@ import {
   type AuthMode,
 } from "@/components/auth/auth-dialog-provider"
 import { TrosiveLogo } from "@/components/brand/trosive-logo"
-import { SearchDocsButton } from "@/components/search/search-docs-button"
 
-function MobileNav({
-  items,
-  className,
-}: {
-  items: NavItem[]
-  className?: string
-}) {
+/**
+ * Reads `mainNav` itself rather than taking it as a prop: the items carry icon
+ * components, which can't cross from the server header into a client one.
+ */
+function MobileNav({ className }: { className?: string }) {
   const [open, setOpen] = React.useState(false)
   const { data: session } = useSession()
   const authDialog = useAuthDialog()
@@ -70,25 +67,20 @@ function MobileNav({
             <span className="sr-only">Trosive navigation</span>
           </SheetTitle>
         </SheetHeader>
-        <div className="px-4">
-          <SearchDocsButton
-            className="w-full justify-start"
-            showShortcut={false}
-          />
-        </div>
         <nav className="flex flex-col gap-1 px-4">
-          {items.map((item) => (
+          {mainNav.map(({ href, label, icon: Icon }) => (
             <SheetClose
-              key={item.href}
+              key={href}
               nativeButton={false}
               render={
                 <Link
-                  href={item.href}
-                  className="rounded-lg px-2 py-2 text-base text-muted-foreground transition-colors hover:bg-muted hover:text-brand"
+                  href={href}
+                  className="flex items-center gap-3 rounded-lg px-2 py-2 text-base text-muted-foreground transition-colors hover:bg-muted hover:text-brand"
                 />
               }
             >
-              {item.label}
+              {Icon && <Icon className="size-5" />}
+              {label}
             </SheetClose>
           ))}
         </nav>
@@ -96,10 +88,12 @@ function MobileNav({
         {!session && (
           <SheetFooter className="grid grid-cols-2">
             <Button variant="outline" onClick={() => requestAuth("sign-in")}>
+              <LogInIcon data-icon="inline-start" />
               Sign in
             </Button>
             <Button onClick={() => requestAuth("sign-up")}>
               Try Trosive free
+              <ArrowRightIcon data-icon="inline-end" />
             </Button>
           </SheetFooter>
         )}

@@ -47,3 +47,5 @@ export const PROVIDER_ICONS: Record<
   google: GoogleIcon,
   github: GitHubIcon,
 }
+
+export { GitHubIcon }

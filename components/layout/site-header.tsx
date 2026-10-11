@@ -1,37 +1,42 @@
 import Link from "next/link"
 
-import { mainNav } from "@/lib/site-config"
+// import { mainNav } from "@/lib/site-config"
 import { AuthHeaderActions } from "@/components/auth/auth-header-actions"
 import { TrosiveLogo } from "@/components/brand/trosive-logo"
-import { MobileNav } from "@/components/layout/mobile-nav"
-import { SearchDocsButton } from "@/components/search/search-docs-button"
-import { ModeToggle } from "@/components/theme/mode-toggle"
+// import { MobileNav } from "@/components/layout/mobile-nav"
+// import { ModeToggle } from "@/components/theme/mode-toggle"
 
+/**
+ * Logo and auth buttons only. The section links, the mobile drawer and the
+ * theme toggle (now in the footer) are commented out below, ready to restore.
+ */
 function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 supports-backdrop-filter:backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-8 px-6">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="Trosive home">
           <TrosiveLogo />
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          {mainNav.map((item) => (
+        {/* <nav className="hidden items-center gap-6 md:flex">
+          {mainNav.map(({ href, label, icon: Icon }) => (
             <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm text-muted-foreground transition-colors hover:text-brand"
+              key={href}
+              href={href}
+              className="group flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-brand"
             >
-              {item.label}
+              {Icon && (
+                <Icon className="size-4 transition-transform group-hover:-translate-y-px" />
+              )}
+              {label}
             </Link>
           ))}
-        </nav>
+        </nav> */}
 
-        <div className="ml-auto flex items-center gap-2">
-          <SearchDocsButton className="hidden lg:inline-flex" />
-          <ModeToggle />
+        <div className="flex items-center gap-2">
+          {/* <ModeToggle /> */}
           <AuthHeaderActions />
-          <MobileNav items={mainNav} className="md:hidden" />
+          {/* <MobileNav className="md:hidden" /> */}
         </div>
       </div>
     </header>

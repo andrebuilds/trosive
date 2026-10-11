@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/brand/trosive-mark-dark.svg">
+  <img src="public/brand/trosive-mark-light.svg" alt="Trosive logo" width="72">
+</picture>
+
 # Trosive
 
 Ask questions across your documents and get answers that cite the exact passage
@@ -82,10 +87,10 @@ on a domain you've verified there.
 Google and GitHub buttons appear in the auth dialogs only when both env vars for
 that provider are set, so you can skip this entirely.
 
-| Provider | Console | Redirect URI |
-| --- | --- | --- |
-| Google | [Cloud console](https://console.cloud.google.com/apis/credentials) | `http://localhost:3000/api/auth/callback/google` |
-| GitHub | [Developer settings](https://github.com/settings/developers) | `http://localhost:3000/api/auth/callback/github` |
+| Provider | Console                                                            | Redirect URI                                     |
+| -------- | ------------------------------------------------------------------ | ------------------------------------------------ |
+| Google   | [Cloud console](https://console.cloud.google.com/apis/credentials) | `http://localhost:3000/api/auth/callback/google` |
+| GitHub   | [Developer settings](https://github.com/settings/developers)       | `http://localhost:3000/api/auth/callback/github` |
 
 Swap `localhost:3000` for your domain in production.
 
@@ -108,17 +113,17 @@ chats by calling `POST /api/cron/retention` with
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Dev server |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run format` | Prettier |
+| Script                  | What it does                                         |
+| ----------------------- | ---------------------------------------------------- |
+| `npm run dev`           | Dev server                                           |
+| `npm run build`         | Production build                                     |
+| `npm run lint`          | ESLint                                               |
+| `npm run typecheck`     | `tsc --noEmit`                                       |
+| `npm run format`        | Prettier                                             |
 | `npm run auth:generate` | Regenerate the auth models in `prisma/schema.prisma` |
-| `npm run db:migrate` | Create and apply a migration |
-| `npm run db:deploy` | Apply pending migrations (production) |
-| `npm run db:studio` | Browse the database |
+| `npm run db:migrate`    | Create and apply a migration                         |
+| `npm run db:deploy`     | Apply pending migrations (production)                |
+| `npm run db:studio`     | Browse the database                                  |
 
 Re-run `auth:generate` then `db:migrate` after changing auth options or plugins
 in `lib/auth.ts`.

@@ -72,8 +72,8 @@ async function HomeStats() {
       </StatTile>
 
       <StatTile label="Questions this month">
-        {/* The value doubles as the meter's label — an amber fill alone would
-            sit under 3:1 against the card. */}
+        {/* The value doubles as the meter's label — the fill alone is colour
+            without words. */}
         <span className="text-3xl font-bold tracking-tight">
           {questionsThisMonth}
           <span className="ml-1 text-lg font-normal text-muted-foreground">
