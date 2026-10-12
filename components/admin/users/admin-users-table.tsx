@@ -5,7 +5,6 @@ import {
   type AdminUserStatus,
 } from "@/lib/admin"
 import { getAdminUsers } from "@/lib/admin-store"
-import { planName } from "@/lib/billing"
 import { rangeLabel } from "@/lib/pagination"
 import { requireAdmin } from "@/lib/session"
 import { cn } from "@/lib/utils"
@@ -28,7 +27,7 @@ const headCell =
 /** The user column takes what's left; the rest are pinned. */
 const columns = [
   { label: "User", className: "w-full" },
-  { label: "Plan", className: "w-32" },
+  { label: "API key", className: "w-32" },
   { label: "Status", className: "w-36" },
   { label: "Last active", className: "w-36" },
 ]
@@ -142,18 +141,16 @@ async function AdminUsersTable({
                   </TableCell>
 
                   <TableCell className="px-6">
-                    {/* The paid plans are worth spotting at a glance; Free is
-                        the default and reads as an outline. */}
+                    {/* Whether they can ask anything: Trosive has no plans,
+                        only the workspace's own Anthropic key. */}
                     <Badge
-                      variant={user.planId === "free" ? "outline" : undefined}
+                      variant={user.hasApiKey ? undefined : "outline"}
                       className={cn(
                         "rounded-md font-mono text-[0.6875rem] font-bold",
-                        user.planId === "business" && "bg-brand/15 text-brand",
-                        user.planId === "pro" &&
-                          "border border-border bg-background text-foreground"
+                        user.hasApiKey && "bg-brand/15 text-brand"
                       )}
                     >
-                      {planName(user.planId)}
+                      {user.hasApiKey ? "Connected" : "None"}
                     </Badge>
                   </TableCell>
 

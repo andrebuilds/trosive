@@ -56,9 +56,14 @@ export async function purgeUserData(userId: string) {
     db.document.deleteMany({
       where: { organizationId: { in: organizationIds } },
     }),
-    // The allowance ledger outlives chats and documents by design, but not the
-    // workspace itself — there is nothing left to meter once it's gone.
+    // The usage ledger outlives chats and documents by design, but not the
+    // workspace itself — there is nothing left to count once it's gone.
     db.questionEvent.deleteMany({
+      where: { organizationId: { in: organizationIds } },
+    }),
+    // Its Anthropic key goes too: a ciphertext with no workspace to use it is
+    // only a liability.
+    db.workspaceApiKey.deleteMany({
       where: { organizationId: { in: organizationIds } },
     }),
     db.organization.deleteMany({ where: { id: { in: organizationIds } } }),

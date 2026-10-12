@@ -14,7 +14,7 @@ export type NavItem = {
 export const siteConfig = {
   name: "Trosive",
   description:
-    "Ask your documents anything and get answers that cite the exact passage behind every claim. Open source.",
+    "Ask your documents anything and get answers that cite the exact passage behind every claim. Open source and free, with no limits: bring your own Anthropic API key.",
   /** AGPL §13: whoever runs this as a service must offer its source, so point this at your fork. */
   repoUrl: "https://github.com/andrebuilds/trosive",
   license: "AGPL-3.0",
@@ -40,7 +40,9 @@ export const footerNav: NavGroup[] = [
     title: "Product",
     items: [
       { href: "/#product", label: "Features" },
-      { href: "/#pricing", label: "Pricing" },
+      // No plans to price: Trosive is free and runs on your own API key.
+      // Comes back with the landing's Pricing section, if that ever returns.
+      // { href: "/#pricing", label: "Pricing" },
       { href: "/#security", label: "Security" },
       { href: "/changelog", label: "Changelog" },
     ],

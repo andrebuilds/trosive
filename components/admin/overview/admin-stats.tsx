@@ -52,9 +52,9 @@ function AdminStats({ overview }: { overview: AdminOverview }) {
         value={formatCount(overview.activeUsers)}
       />
       <StatTile
-        label="Paid subscribers"
-        value={formatCount(overview.paidSubscribers)}
-        suffix={`/ ${formatCount(overview.totalUsers)}`}
+        label="Workspaces with a key"
+        value={formatCount(overview.workspacesWithKey)}
+        suffix={`/ ${formatCount(overview.totalWorkspaces)}`}
       />
     </div>
   )

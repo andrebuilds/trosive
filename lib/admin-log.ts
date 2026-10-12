@@ -1,6 +1,3 @@
-import type { PlanId } from "@/lib/billing"
-import { planName } from "@/lib/billing"
-
 /**
  * The activity log's shapes and, more importantly, its wording.
  *
@@ -9,7 +6,7 @@ import { planName } from "@/lib/billing"
  * at the moment of the event, and the result never changes afterwards.
  *
  * Each reads as the predicate after the actor's name: "Ada Lovelace" +
- * "created user grace@meridian.co (Free)".
+ * "created user grace@meridian.co".
  */
 
 /** How many entries the page shows. Older ones come out through the CSV. */
@@ -24,6 +21,7 @@ export const LOG_ACTIONS = {
   userDeactivated: "user.deactivated",
   userReactivated: "user.reactivated",
   passwordResetSent: "user.password_reset_sent",
+  // No longer written: Trosive has no plans. Kept so older entries still read.
   planGranted: "plan.granted",
   settingChanged: "settings.changed",
   chatsPurged: "retention.chats_purged",
@@ -44,12 +42,8 @@ export type AdminLogEntry = {
 
 /* --- the sentences ------------------------------------------------------ */
 
-export function describeUserCreated(email: string, planId: PlanId) {
-  return `created user ${email} (${planName(planId)})`
-}
-
-export function describePlanGranted(subject: string, planId: PlanId) {
-  return `upgraded ${subject} to ${planName(planId)}`
+export function describeUserCreated(email: string) {
+  return `created user ${email}`
 }
 
 export function describeDeactivated(subject: string) {

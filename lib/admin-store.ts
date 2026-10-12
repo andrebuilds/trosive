@@ -9,7 +9,7 @@ import {
   type AdminUsersView,
   type AdminUserStatus,
 } from "@/lib/admin"
-import { ENTITLED_STATUSES, type PlanId } from "@/lib/billing"
+import { countWorkspacesWithKey } from "@/lib/api-keys"
 import { db } from "@/lib/db"
 import { clampPage } from "@/lib/pagination"
 
@@ -20,40 +20,13 @@ import { clampPage } from "@/lib/pagination"
  * all of them. Guard every caller with `requireAdmin()`.
  */
 
-/** Midnight on the 1st — the same window the question allowance resets on. */
+/** Midnight on the 1st, the same month the usage pages count. */
 function monthStart(now: Date) {
   return new Date(now.getFullYear(), now.getMonth(), 1)
 }
 
 function activitySince(now: Date) {
   return new Date(now.getTime() - ADMIN_ACTIVE_WINDOW_DAYS * 86_400_000)
-}
-
-/**
- * How many people are entitled to a paid plan.
- *
- * Counted in people rather than subscriptions: a subscription belongs to a
- * workspace, and the tile sits beside a total of user accounts, so counting
- * rows would compare two different things. Members are de-duplicated, so
- * somebody in two paid workspaces is still one paid subscriber.
- */
-async function countPaidSubscribers() {
-  const paidWorkspaces = await db.subscription.findMany({
-    where: { status: { in: [...ENTITLED_STATUSES] } },
-    select: { organizationId: true },
-  })
-
-  if (paidWorkspaces.length === 0) return 0
-
-  const members = await db.member.findMany({
-    where: {
-      organizationId: { in: paidWorkspaces.map((row) => row.organizationId) },
-    },
-    distinct: ["userId"],
-    select: { userId: true },
-  })
-
-  return members.length
 }
 
 /**
@@ -104,8 +77,8 @@ async function listMostActiveUsers(since: Date): Promise<AdminActiveUser[]> {
 
   return (
     byUser
-      // A deleted account keeps its question events — they're the billing
-      // record — but has no name to show, so it drops out of the list.
+      // A deleted account keeps its question events (they're the usage
+      // ledger) but has no name to show, so it drops out of the list.
       .filter((row) => byId.has(row.userId))
       .map((row) => {
         const user = byId.get(row.userId)!
@@ -133,14 +106,16 @@ export async function getAdminOverview(
     questionsThisMonth,
     totalUsers,
     activeUsers,
-    paidSubscribers,
+    workspacesWithKey,
+    totalWorkspaces,
     mostActive,
   ] = await Promise.all([
     db.document.count({ where: { status: "READY" } }),
     db.questionEvent.count({ where: { createdAt: { gte: since } } }),
     db.user.count(),
     countActiveUsers(activeSince),
-    countPaidSubscribers(),
+    countWorkspacesWithKey(),
+    db.organization.count(),
     listMostActiveUsers(since),
   ])
 
@@ -148,7 +123,8 @@ export async function getAdminOverview(
     documentsIndexed,
     questionsThisMonth,
     activeUsers,
-    paidSubscribers,
+    workspacesWithKey,
+    totalWorkspaces,
     totalUsers,
     mostActive,
   }
@@ -158,53 +134,42 @@ export async function getAdminOverview(
  * Users tab
  * ---------------------------------------------------------------------- */
 
-/** Ranked worst-to-best, so a person in two workspaces shows the better plan. */
-const PLAN_RANK: Record<PlanId, number> = { free: 0, pro: 1, business: 2 }
-
 /**
- * The best plan each of these users is entitled to.
- *
- * Read through the workspaces they belong to rather than off the user, because
- * a plan is bought by a workspace — and only an entitled subscription counts,
- * the same rule the product enforces everywhere else.
+ * Which of these users can ask questions: they belong to a workspace whose
+ * own Anthropic key is saved and working. Read through memberships, because a
+ * key belongs to a workspace, not a person.
  */
-async function plansByUser(userIds: string[]) {
-  const plans = new Map<string, PlanId>()
+async function usersWithApiKey(userIds: string[]) {
+  const withKey = new Set<string>()
 
-  if (userIds.length === 0) return plans
+  if (userIds.length === 0) return withKey
 
   const memberships = await db.member.findMany({
     where: { userId: { in: userIds } },
     select: { userId: true, organizationId: true },
   })
 
-  if (memberships.length === 0) return plans
+  if (memberships.length === 0) return withKey
 
-  const paid = await db.subscription.findMany({
+  const keyed = await db.workspaceApiKey.findMany({
     where: {
       organizationId: {
         in: memberships.map((membership) => membership.organizationId),
       },
-      status: { in: [...ENTITLED_STATUSES] },
+      status: "valid",
     },
-    select: { organizationId: true, planId: true },
+    select: { organizationId: true },
   })
 
-  const planByOrganization = new Map(
-    paid.map((row) => [row.organizationId, row.planId as PlanId])
-  )
+  const keyedWorkspaces = new Set(keyed.map((row) => row.organizationId))
 
   for (const membership of memberships) {
-    const plan = planByOrganization.get(membership.organizationId)
-
-    if (!plan) continue
-
-    const held = plans.get(membership.userId) ?? "free"
-
-    if (PLAN_RANK[plan] > PLAN_RANK[held]) plans.set(membership.userId, plan)
+    if (keyedWorkspaces.has(membership.organizationId)) {
+      withKey.add(membership.userId)
+    }
   }
 
-  return plans
+  return withKey
 }
 
 /**
@@ -310,8 +275,8 @@ export async function getAdminUsers({
 
   // Both lookups are scoped to the page's own rows, so the cost of the table
   // doesn't grow with the size of the user base.
-  const [plans, lastActive] = await Promise.all([
-    plansByUser(ids),
+  const [withKey, lastActive] = await Promise.all([
+    usersWithApiKey(ids),
     lastActiveByUser(ids),
   ])
 
@@ -323,7 +288,7 @@ export async function getAdminUsers({
       name: user.name,
       email: user.email,
       image: user.image,
-      planId: plans.get(user.id) ?? "free",
+      hasApiKey: withKey.has(user.id),
       status: userStatus(user.banned ?? false, seen, activeSince),
       lastActive: seen?.toISOString() ?? null,
       isAdmin: isAdminRole(user.role),

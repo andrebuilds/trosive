@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server"
 
-import { isAnthropicConfigured } from "@/lib/anthropic"
+import { createAnthropicClient } from "@/lib/anthropic"
+import { markWorkspaceKeyInvalid, resolveAnthropicKey } from "@/lib/api-keys"
 import { requireApiContext } from "@/lib/api-session"
 import { streamAnswer } from "@/lib/answer"
-import { allowanceSpentMessage, type ChatSource } from "@/lib/chat"
+import { NO_API_KEY_CODE } from "@/lib/byok"
+import type { ChatSource } from "@/lib/chat"
 import {
   addMessage,
   getChat,
   getChatDocuments,
   getChatHistory,
-  getQuestionAllowance,
   recordQuestion,
 } from "@/lib/chat-store"
 
@@ -34,10 +35,19 @@ export async function POST(
   const guard = await requireApiContext()
   if (!guard.ok) return guard.response
 
-  if (!isAnthropicConfigured()) {
+  // Bring your own key: no key, no answer. Checked before the question is
+  // stored, so a refused question doesn't sit in the thread unanswered. The
+  // code is what the composer keys its "add your key" prompt on.
+  const key = await resolveAnthropicKey(guard.context.organizationId)
+
+  if (!key) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY isn't set, so Trosive can't answer yet." },
-      { status: 503 }
+      {
+        code: NO_API_KEY_CODE,
+        error:
+          "This workspace needs a working Anthropic API key before it can answer. Add one in Settings, API key.",
+      },
+      { status: 409 }
     )
   }
 
@@ -59,18 +69,6 @@ export async function POST(
     typeof body.question === "string" ? body.question.trim() : undefined
 
   if (question) {
-    // Enforced here, not in the browser: the composer disables itself once the
-    // allowance is spent, but the limit has to hold for a tab that never
-    // re-rendered and for a request that never came from one.
-    const allowance = await getQuestionAllowance(guard.context.organizationId)
-
-    if (allowance.spent) {
-      return NextResponse.json(
-        { error: allowanceSpentMessage(allowance.limit) },
-        { status: 402 }
-      )
-    }
-
     await addMessage({ chatId, role: "USER", content: question })
   } else if (!chat.pendingAnswer) {
     return NextResponse.json(
@@ -110,11 +108,9 @@ export async function POST(
     )
   }
 
-  // Charged here: past every reason this request could still be turned away,
-  // and before a single token is asked for. Not when the answer finishes —
-  // that would make disconnecting mid-stream a way to read one for free, and
-  // charging at the moment the work is commissioned is what makes the ledger
-  // impossible to game.
+  // Counted here, past every reason this request could still be turned away.
+  // Nothing is charged against it: the answer is billed to the workspace's own
+  // Anthropic key. It feeds the home page, Usage and the admin console.
   if (question) {
     await recordQuestion({
       organizationId: guard.context.organizationId,
@@ -123,6 +119,7 @@ export async function POST(
     })
   }
 
+  const client = createAnthropicClient(key.apiKey)
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream<Uint8Array>({
@@ -133,7 +130,7 @@ export async function POST(
       let answer = ""
 
       try {
-        for await (const event of streamAnswer(documents, history)) {
+        for await (const event of streamAnswer(client, documents, history)) {
           if (event.type === "text") {
             answer += event.value
             send(event)
@@ -142,6 +139,17 @@ export async function POST(
 
           if (event.type === "error") {
             send(event)
+
+            // Anthropic refused the workspace's own key: mark it so the app
+            // stops trying and shows the banner, and tell the owners. The
+            // instance key is the operator's problem, not the workspace's.
+            if (event.invalidKey && key.source === "workspace") {
+              await markWorkspaceKeyInvalid(
+                guard.context.organizationId,
+                "Anthropic rejected this key. It may have been revoked or deleted."
+              )
+            }
+
             return
           }
 

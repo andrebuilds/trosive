@@ -7,7 +7,7 @@ import {
 } from "better-auth/api"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { nextCookies } from "better-auth/next-js"
-import { admin, organization } from "better-auth/plugins"
+import { admin, magicLink, organization } from "better-auth/plugins"
 
 import { purgeUserData } from "@/lib/account"
 import {
@@ -20,15 +20,26 @@ import { actorNameFor, recordAdminLog } from "@/lib/admin-log-store"
 import { isAdminRole } from "@/lib/admin"
 import { getAppSettings } from "@/lib/app-settings-store"
 import { configuredSocialProviders } from "@/lib/auth-providers"
+import { APP_ROOT } from "@/lib/dashboard-nav"
 import { db } from "@/lib/db"
 import {
   sendChangeEmailVerification,
+  sendMagicLinkEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
+  sendWelcomeEmail,
 } from "@/lib/email"
+import { MAGIC_LINK_MINUTES } from "@/lib/email/templates"
 import { siteConfig } from "@/lib/site-config"
 
 const isProduction = process.env.NODE_ENV === "production"
+
+/** For links in emails, which have no page to be relative to. */
+const appOrigin = (
+  process.env.NEXT_PUBLIC_APP_URL ??
+  process.env.BETTER_AUTH_URL ??
+  "http://localhost:3000"
+).replace(/\/$/, "")
 
 /** Extra origins allowed to drive auth, as a comma-separated env var. */
 const trustedOrigins =
@@ -55,15 +66,18 @@ export const auth = betterAuth({
   // `baseURL`/`secret` fall back to BETTER_AUTH_URL / BETTER_AUTH_SECRET.
   trustedOrigins,
 
+  // No passwords: an email address gets in with a magic link (the plugin at
+  // the bottom), everyone else with Google or GitHub. The settings below stay
+  // so passwords can come back by flipping `enabled`, together with the
+  // password fields the dialogs, Settings and the admin console used to have.
   emailAndPassword: {
-    enabled: true,
+    enabled: false,
     // NIST SP 800-63B: an 8-character floor, and no low maximum that would
     // rule out passphrases or a password manager's output.
     minPasswordLength: 8,
     maxPasswordLength: 128,
-    // Flip to `true` once you're sending from a verified domain — it blocks
-    // sign-in until the address is confirmed.
-    requireEmailVerification: false,
+    // No session until the address is confirmed.
+    requireEmailVerification: true,
     resetPasswordTokenExpiresIn: 60 * 60,
     // A reset is how you recover a *stolen* account, so drop every other
     // session the attacker may be holding.
@@ -156,6 +170,28 @@ export const auth = betterAuth({
             message: "New sign-ups are closed right now.",
           })
         },
+
+        /**
+         * The welcome email. The row only appears once the address is proven:
+         * the magic link creates it on the first click, OAuth on the callback.
+         * The admin console's create-user form sends one too. `after` keeps
+         * the mail off the redirect into onboarding, and a failed send only
+         * gets logged: the account exists either way.
+         */
+        after: async (user) => {
+          after(async () => {
+            try {
+              await sendWelcomeEmail(
+                user.email,
+                user.name,
+                `${appOrigin}${APP_ROOT}`,
+                user.id
+              )
+            } catch (error) {
+              console.error("[email] welcome email failed", error)
+            }
+          })
+        },
       },
     },
   },
@@ -185,8 +221,9 @@ export const auth = betterAuth({
     },
   },
 
+  // With passwords off, this is mostly the "confirm your new address" mail of
+  // Settings → Account. The magic link verifies the address by itself.
   emailVerification: {
-    sendOnSignUp: true,
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60,
     sendVerificationEmail: async ({ user, url }) => {
@@ -251,6 +288,8 @@ export const auth = betterAuth({
       "/sign-up/email": { window: 60, max: 3 },
       "/request-password-reset": { window: 60, max: 3 },
       "/reset-password": { window: 60, max: 5 },
+      "/send-verification-email": { window: 60, max: 3 },
+      "/sign-in/magic-link": { window: 60, max: 3 },
     },
   },
 
@@ -288,6 +327,34 @@ export const auth = betterAuth({
       defaultRole: "user",
       adminRoles: ["admin"],
       adminUserIds: bootstrapAdminIds,
+    }),
+
+    // Sign-in and sign-up for email addresses, in one step. A new address gets
+    // a "confirm your email" mail and its account is created, already
+    // verified, when the link is opened; a known one gets a sign-in mail.
+    magicLink({
+      expiresIn: MAGIC_LINK_MINUTES * 60,
+      sendMagicLink: async ({ email, url }) => {
+        const existing = await db.user.findUnique({
+          where: { email: email.toLowerCase() },
+          select: { id: true },
+        })
+
+        // Checked here as well as in the user hook, so a closed registration
+        // is said in the dialog, not on a dead link. Only while sign-ups are
+        // closed does this tell an unknown address apart from a known one.
+        if (!existing) {
+          const { allowSignUps } = await getAppSettings()
+
+          if (!allowSignUps) {
+            throw new APIError("FORBIDDEN", {
+              message: "New sign-ups are closed right now.",
+            })
+          }
+        }
+
+        await sendMagicLinkEmail(email, url, !existing)
+      },
     }),
 
     // Must stay last — it writes cookies set during server actions.

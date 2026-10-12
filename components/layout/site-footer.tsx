@@ -1,12 +1,13 @@
 import Link from "next/link"
-import { MailIcon, StarIcon } from "lucide-react"
+import { MailIcon } from "lucide-react"
 
+import { getStarCount } from "@/lib/github"
 import { siteConfig } from "@/lib/site-config"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { GitHubIcon } from "@/components/auth/provider-icons"
 import { TrosiveMark } from "@/components/brand/trosive-logo"
+import { GitHubStarsButton } from "@/components/layout/github-stars-button"
 import { ModeToggle } from "@/components/theme/mode-toggle"
 
 const LEGAL_LINKS = [
@@ -14,26 +15,6 @@ const LEGAL_LINKS = [
   { href: "/privacy", label: "Privacy" },
   { href: "/cookies", label: "Cookies" },
 ]
-
-/**
- * The repo's star count, refreshed hourly. Null while the repo is private or
- * GitHub is unreachable, and the button then shows the icon alone.
- */
-async function getStarCount(): Promise<number | null> {
-  const repo = new URL(siteConfig.repoUrl).pathname
-  try {
-    const res = await fetch(`https://api.github.com/repos${repo}`, {
-      next: { revalidate: 3600 },
-    })
-    if (!res.ok) return null
-    const { stargazers_count } = (await res.json()) as {
-      stargazers_count?: number
-    }
-    return stargazers_count ?? null
-  } catch {
-    return null
-  }
-}
 
 async function SiteFooter() {
   const stars = await getStarCount()
@@ -79,27 +60,7 @@ async function SiteFooter() {
             className="mx-1.5 data-vertical:h-4 data-vertical:self-auto"
           />
 
-          <Button
-            variant="ghost"
-            className="h-8 gap-1.5 px-2.5"
-            render={
-              <a
-                href={siteConfig.repoUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`Star ${siteConfig.name} on GitHub`}
-              />
-            }
-            nativeButton={false}
-          >
-            <GitHubIcon className="size-4" />
-            {stars !== null && (
-              <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
-                <StarIcon className="size-3.5 fill-current" />
-                {stars}
-              </span>
-            )}
-          </Button>
+          <GitHubStarsButton stars={stars} />
 
           <Separator
             orientation="vertical"

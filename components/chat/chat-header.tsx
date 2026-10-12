@@ -6,6 +6,7 @@ import type { SessionUser } from "@/lib/auth-client"
 import { SETTINGS_ROUTE } from "@/lib/dashboard-nav"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { UserAvatar } from "@/components/auth/user-avatar"
 import { AccountMenu } from "@/components/dashboard/account-menu"
@@ -33,7 +34,11 @@ function ChatHeader({
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b bg-background px-6">
-      <SidebarTrigger className="-ml-2 cursor-pointer md:hidden" />
+      <SidebarTrigger className="-ml-2 cursor-pointer" />
+      <Separator
+        orientation="vertical"
+        className="mr-1 data-vertical:h-5 data-vertical:self-auto"
+      />
 
       <h1 className="truncate text-base font-semibold">{title}</h1>
 

@@ -1,20 +1,22 @@
 import { createAuthClient } from "better-auth/react"
-import { adminClient, organizationClient } from "better-auth/client/plugins"
+import {
+  adminClient,
+  magicLinkClient,
+  organizationClient,
+} from "better-auth/client/plugins"
 
 export const authClient = createAuthClient({
   // Same-origin in the browser; the env var only matters for non-browser use.
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
   // Mirrors the server plugin list — see `lib/auth.ts`.
-  plugins: [organizationClient(), adminClient()],
+  plugins: [organizationClient(), adminClient(), magicLinkClient()],
 })
 
 export const {
   signIn,
-  signUp,
   signOut,
   useSession,
   getSession,
-  requestPasswordReset,
   resetPassword,
   organization,
   useActiveOrganization,

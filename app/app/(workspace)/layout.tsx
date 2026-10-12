@@ -1,14 +1,16 @@
 import { cookies } from "next/headers"
 
-import { planLabel } from "@/lib/billing"
-import { getWorkspacePlan } from "@/lib/billing-store"
+import { getWorkspaceKeyStatus } from "@/lib/api-keys"
+import { canAsk } from "@/lib/byok"
 import { getNavCounts } from "@/lib/chat-store"
+import { getStarCount } from "@/lib/github"
 import {
   isCurrentUserAdmin,
   requireOrganization,
   requireSession,
 } from "@/lib/session"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { ApiKeyBanner } from "@/components/api-key/api-key-banner"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 
@@ -27,11 +29,12 @@ export default async function WorkspaceLayout({
 }>) {
   const session = await requireSession()
   const organization = await requireOrganization()
-  const [cookieStore, counts, planId, isAdmin] = await Promise.all([
+  const [cookieStore, counts, keyStatus, isAdmin, stars] = await Promise.all([
     cookies(),
     getNavCounts(organization.id),
-    getWorkspacePlan(organization.id),
+    getWorkspaceKeyStatus(organization.id, session.user.id),
     isCurrentUserAdmin(),
+    getStarCount(),
   ])
 
   return (
@@ -42,12 +45,13 @@ export default async function WorkspaceLayout({
         user={session.user}
         workspaceName={organization.name}
         counts={counts}
-        planLabel={planLabel(planId)}
+        keyStatus={keyStatus}
         isAdmin={isAdmin}
       />
 
       <SidebarInset className="min-w-0">
-        <DashboardHeader user={session.user} showSidebarTrigger />
+        <DashboardHeader stars={stars} showSidebarTrigger />
+        {!canAsk(keyStatus) && <ApiKeyBanner status={keyStatus} />}
         <div className="flex-1">{children}</div>
       </SidebarInset>
     </SidebarProvider>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 
+import { redirectIfOnboarded } from "@/lib/session"
 import { CreateOrganizationForm } from "@/components/onboarding/create-organization-form"
 
 export const metadata: Metadata = {
@@ -7,6 +8,8 @@ export const metadata: Metadata = {
 }
 
 /** First run — `ui-design/dashboard/light/dashboard-organisation.png`. */
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  await redirectIfOnboarded()
+
   return <CreateOrganizationForm />
 }

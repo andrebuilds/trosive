@@ -4,8 +4,9 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { LockIcon } from "lucide-react"
 
-import { signUp } from "@/lib/auth-client"
+import { signIn } from "@/lib/auth-client"
 import type { SocialProviderId } from "@/lib/auth-providers"
+import { checkEmailHref, MAGIC_LINK_REDIRECTS } from "@/lib/check-email"
 import { APP_ROOT } from "@/lib/dashboard-nav"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -37,7 +38,7 @@ function SignUpDialog({
   socialProviders?: SocialProviderId[]
   /** False while an admin has registration closed — see the Security tab. */
   allowSignUps?: boolean
-  /** Where the confirmation link in the verification email lands. */
+  /** Where social sign-up returns to. The email link goes to onboarding. */
   callbackURL?: string
 }) {
   const router = useRouter()
@@ -56,30 +57,27 @@ function SignUpDialog({
     setPending(true)
     setError(null)
 
-    const { data, error: signUpError } = await signUp.email({
-      name: String(form.get("name")),
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-      callbackURL,
+    // No password: the account is created when the emailed link is opened,
+    // which also proves the address. The link then starts onboarding.
+    const name = String(form.get("name")).trim()
+    const email = String(form.get("email"))
+    const { error: sendError } = await signIn.magicLink({
+      email,
+      name,
+      ...MAGIC_LINK_REDIRECTS,
     })
 
     setPending(false)
 
-    if (signUpError) {
-      setError(authErrorMessage(signUpError, "Could not create your account."))
+    if (sendError) {
+      setError(authErrorMessage(sendError, "Could not create your account."))
       return
     }
 
+    // An address that already has an account gets a sign-in link and the
+    // same inbox page, so this never reveals who's registered.
     handleOpenChange(false)
-
-    // A token means sign-up established a session, so go straight to the app.
-    // Without one, verification is still pending — stay put and let server
-    // components pick up whatever state we do have.
-    if (data?.token) {
-      router.push(APP_ROOT)
-    } else {
-      router.refresh()
-    }
+    router.push(checkEmailHref(email, name))
   }
 
   return (
@@ -99,7 +97,7 @@ function SignUpDialog({
     >
       {!allowSignUps ? (
         // The server refuses these anyway; showing the form first would only
-        // collect a password on the way to being told no.
+        // collect details on the way to being told no.
         <Alert>
           <LockIcon />
           <AlertTitle>New sign-ups are closed right now.</AlertTitle>
@@ -140,23 +138,16 @@ function SignUpDialog({
               required
               disabled={pending}
             />
-            <AuthField
-              id="sign-up-password"
-              name="password"
-              type="password"
-              label="Password"
-              placeholder="At least 8 characters"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              disabled={pending}
-            />
 
             <div className="mt-1">
               <AuthSubmitButton pending={pending}>
                 Create account
               </AuthSubmitButton>
             </div>
+            <p className="text-center text-xs leading-relaxed text-muted-foreground">
+              No password needed. We&apos;ll email you a link to confirm your
+              address.
+            </p>
           </form>
         </div>
       )}

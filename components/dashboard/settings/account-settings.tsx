@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation"
 import {
   authClient,
   organization as organizationClient,
-  requestPasswordReset,
   type SessionUser,
 } from "@/lib/auth-client"
 import { SETTINGS_ROUTE } from "@/lib/dashboard-nav"
@@ -58,7 +57,6 @@ function AccountSettings({
 
   const [saving, setSaving] = React.useState(false)
   const [removingAvatar, setRemovingAvatar] = React.useState(false)
-  const [sendingReset, setSendingReset] = React.useState(false)
 
   const trimmed = {
     name: name.trim(),
@@ -189,30 +187,6 @@ function AccountSettings({
     toast.add({ type: "success", title: "Profile picture removed" })
   }
 
-  async function handleChangePassword() {
-    setSendingReset(true)
-    const { error } = await requestPasswordReset({
-      email: user.email,
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
-    setSendingReset(false)
-
-    if (error) {
-      toast.add({
-        type: "error",
-        title: "Couldn't send the link",
-        description: authErrorMessage(error, "Please try again."),
-      })
-      return
-    }
-
-    toast.add({
-      type: "success",
-      title: "Check your inbox",
-      description: `We sent a link to ${user.email} to set a new password.`,
-    })
-  }
-
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <Card className="[--card-spacing:--spacing(6)]">
@@ -311,27 +285,6 @@ function AccountSettings({
                 ))}
             </Field>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="[--card-spacing:--spacing(6)]">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Password</CardTitle>
-          <CardDescription>Change your password anytime.</CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="cursor-pointer"
-            disabled={sendingReset}
-            onClick={handleChangePassword}
-          >
-            {sendingReset ? <SpinnerRing /> : null}
-            Change password
-          </Button>
         </CardContent>
       </Card>
 

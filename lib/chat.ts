@@ -40,59 +40,11 @@ export const DOCUMENT_FORMATS_LABEL = "PDF, Word, text, markdown · up to 15 MB"
 export const MAX_DOCUMENTS_PER_CHAT = 20
 
 /**
- * The month's allowance, spent and remaining.
- *
- * The limit itself is no longer a constant — it comes from the workspace's
- * plan, which comes from its Stripe subscription. `PLAN_QUESTION_LIMITS` in
- * `lib/billing.ts` holds the figures, and `getWorkspaceQuestionLimit` is what
- * resolves one for a workspace. Business is `Infinity`, which every helper here
- * handles rather than special-cases.
+ * "1 question", "12 questions". There's no ceiling to count down to: Trosive
+ * has no plans, and every question runs on the workspace's own Anthropic key.
  */
-export type QuestionAllowance = {
-  used: number
-  limit: number
-  /** Never negative, so a lowered limit reads as spent rather than owed. */
-  remaining: number
-  /** True once the allowance is gone and the next question must be refused. */
-  spent: boolean
-}
-
-/**
- * Both halves of "12 / 50 questions", and the verdict the messages route
- * refuses on. `limit` is required: a default here would be a second opinion
- * about what a plan allows, and there can only be one.
- */
-export function questionAllowance(
-  used: number,
-  limit: number
-): QuestionAllowance {
-  return {
-    used,
-    limit,
-    remaining: Math.max(0, limit - used),
-    spent: used >= limit,
-  }
-}
-
-/** True for the Business plan's allowance, which has no ceiling to show. */
-export function isUnlimited(limit: number) {
-  return !Number.isFinite(limit)
-}
-
-/**
- * "12 / 50 questions" — or just "12 questions" where there's nothing to count
- * down to. The denominator is the whole point of the meter, so on an unlimited
- * plan it goes rather than reading "12 / ∞".
- */
-export function formatQuestionCount(used: number, limit: number) {
-  return isUnlimited(limit)
-    ? `${used} ${used === 1 ? "question" : "questions"}`
-    : `${used} / ${limit} questions`
-}
-
-/** What the composer and the API say when the month's questions are gone. */
-export function allowanceSpentMessage(limit: number) {
-  return `You've used all ${limit} questions on your plan this month. Your allowance resets on the 1st, or upgrade for more.`
+export function formatQuestionCount(used: number) {
+  return `${used} ${used === 1 ? "question" : "questions"}`
 }
 
 /** "2.4 MB", "880 KB" — shared so uploads and library rows read the same. */
@@ -204,10 +156,8 @@ export type ChatDetail = {
   title: string
   /** In citation order, which is the order they go to Claude. */
   documents: ChatDocumentView[]
-  /** Workspace-wide questions this month — what the plan allowance counts. */
+  /** Workspace-wide questions this month. A count, not a quota. */
   questionsThisMonth: number
-  /** The plan's ceiling for those questions; `Infinity` on Business. */
-  questionLimit: number
   messages: ChatMessageView[]
   /**
    * True when the last turn is still waiting on Claude — either the seeded

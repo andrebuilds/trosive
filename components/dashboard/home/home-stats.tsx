@@ -1,23 +1,21 @@
 import Link from "next/link"
 
-import { planName } from "@/lib/billing"
-import { isUnlimited } from "@/lib/chat"
+import { getWorkspaceKeyStatus } from "@/lib/api-keys"
+import {
+  API_KEY_ROUTE,
+  apiKeyLabel,
+  canAsk,
+  type ApiKeyStatus,
+} from "@/lib/byok"
 import { getWorkspaceStats } from "@/lib/chat-store"
-import { BILLING_ROUTE } from "@/lib/dashboard-nav"
-import { requireOrganization } from "@/lib/session"
+import { requireOrganization, requireSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
-import { Progress } from "@/components/ui/progress"
 
-/**
- * A ratio against a limit reads as state, so the fill carries severity: the
- * brand accent while there's room, destructive once the allowance is spent.
- * Both class strings are written out in full — Tailwind can't see a name that
- * only exists after string interpolation.
- */
-function meterTone(ratio: number) {
-  return ratio >= 1
-    ? "**:data-[slot=progress-indicator]:bg-destructive"
-    : "**:data-[slot=progress-indicator]:bg-brand"
+/** The API key tile's one word. */
+function keyTileValue(status: ApiKeyStatus) {
+  if (status.source === "instance") return "Server key"
+  if (status.source === null) return "Missing"
+  return status.state === "invalid" ? "Not working" : "Connected"
 }
 
 function StatTile({
@@ -36,26 +34,24 @@ function StatTile({
 }
 
 /**
- * The headline numbers — `ui-design/dashboard/light/dashboard-home.png`.
+ * The headline numbers, `ui-design/dashboard/light/dashboard-home.png`.
  *
- * Three tiles, not three charts: each is a single current value, and the one
- * ratio among them is a meter. Values use proportional figures (`tabular-nums`
- * is for columns that must align, not for standalone numbers).
+ * Three tiles, each a single current value. Values use proportional figures
+ * (`tabular-nums` is for columns that must align, not for standalone numbers).
+ * The reference's plan tile is the API key here: Trosive has no plans, and
+ * the key is what decides whether questions can be asked.
  */
 async function HomeStats() {
+  const session = await requireSession()
   const organization = await requireOrganization()
-  const {
-    documentsIndexed,
-    documentsPending,
-    questionsThisMonth,
-    planId,
-    questionLimit,
-  } = await getWorkspaceStats(organization.id)
-
-  // An unlimited allowance has no ratio to draw, so the meter reads as empty
-  // rather than as a bar that can never move.
-  const unlimited = isUnlimited(questionLimit)
-  const ratio = unlimited ? 0 : questionsThisMonth / questionLimit
+  const [
+    { documentsIndexed, documentsPending, questionsThisMonth },
+    keyStatus,
+  ] = await Promise.all([
+    getWorkspaceStats(organization.id),
+    getWorkspaceKeyStatus(organization.id, session.user.id),
+  ])
+  const ready = canAsk(keyStatus)
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -72,43 +68,37 @@ async function HomeStats() {
       </StatTile>
 
       <StatTile label="Questions this month">
-        {/* The value doubles as the meter's label — the fill alone is colour
-            without words. */}
         <span className="text-3xl font-bold tracking-tight">
           {questionsThisMonth}
-          <span className="ml-1 text-lg font-normal text-muted-foreground">
-            {unlimited ? "this month" : `/ ${questionLimit}`}
-          </span>
         </span>
-
-        <Progress
-          value={Math.min(100, Math.round(ratio * 100))}
-          aria-label={
-            unlimited
-              ? `${questionsThisMonth} questions asked this month, on an unlimited plan`
-              : `${questionsThisMonth} of ${questionLimit} questions used this month`
-          }
-          className={cn(
-            "mt-auto **:data-[slot=progress-track]:h-1.5 **:data-[slot=progress-track]:bg-brand/15",
-            "**:data-[slot=progress-indicator]:rounded-full",
-            meterTone(ratio)
-          )}
-        />
+        <span className="text-sm text-muted-foreground">
+          No limits, on your own API key
+        </span>
       </StatTile>
 
-      {/* The workspace's entitlement, not a label: `planId` is `free` until a
-          Stripe subscription says otherwise. */}
-      <StatTile label="Current plan">
+      <StatTile label="API key">
         <span className="flex items-center gap-3">
-          <span className="text-3xl font-bold tracking-tight">
-            {planName(planId)}
+          <span
+            className={cn(
+              "text-3xl font-bold tracking-tight",
+              !ready && "text-destructive"
+            )}
+          >
+            {keyTileValue(keyStatus)}
           </span>
           <Link
-            href={BILLING_ROUTE}
+            href={API_KEY_ROUTE}
             className="rounded-md bg-brand/15 px-2 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand/25"
           >
-            {planId === "free" ? "Upgrade" : "Manage"}
+            {ready
+              ? "Manage"
+              : keyStatus.state === "invalid"
+                ? "Replace"
+                : "Add"}
           </Link>
+        </span>
+        <span className="text-sm text-muted-foreground">
+          {keyStatus.hint ?? apiKeyLabel(keyStatus)}
         </span>
       </StatTile>
     </div>

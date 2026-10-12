@@ -1,35 +1,33 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { SettingsIcon } from "lucide-react"
 
 import { ADMIN_BADGE, isAdminRoute } from "@/lib/admin"
-import type { SessionUser } from "@/lib/auth-client"
-import { dashboardPageTitle, SETTINGS_ROUTE } from "@/lib/dashboard-nav"
+import { dashboardPageTitle } from "@/lib/dashboard-nav"
 import { SEARCH_ROUTE } from "@/lib/search"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { UserAvatar } from "@/components/auth/user-avatar"
-import { AccountMenu } from "@/components/dashboard/account-menu"
+import { GitHubStarsButton } from "@/components/layout/github-stars-button"
 import { SearchCommand } from "@/components/search/search-command"
 import { ModeToggle } from "@/components/theme/mode-toggle"
 
-/** Links above "Sign out" in the header menu. */
-const accountMenuItems = [
-  { href: SETTINGS_ROUTE, label: "Manage account", icon: SettingsIcon },
-]
-
-/** Chrome above the page — `ui-design/dashboard/light/dashboard-header.png`. */
+/**
+ * Chrome above the page — `ui-design/dashboard/light/dashboard-header.png`.
+ *
+ * No account menu: the sidebar's footer already has one, so the right end
+ * links to the repo instead.
+ */
 function DashboardHeader({
-  user,
+  stars,
   title,
   badge,
   showSearch = true,
   showSidebarTrigger = false,
 }: {
-  user: SessionUser
-  /** Overrides the route's own title, e.g. "Welcome" during onboarding. */
+  /** The repo's star count, fetched by the layout; null shows the icon alone. */
+  stars: number | null
+  /** Overrides the route's own title. */
   title?: string
   /**
    * Overrides the pill beside the title. Left alone, the console adds its own
@@ -41,8 +39,8 @@ function DashboardHeader({
   showSearch?: boolean
   /**
    * Opt-in, because `SidebarTrigger` throws outside a `SidebarProvider` and
-   * only `(workspace)` has one. Forgetting it costs a mobile toggle; assuming
-   * it costs the whole page.
+   * only `(workspace)` has one. Forgetting it costs the sidebar toggle;
+   * assuming it costs the whole page.
    */
   showSidebarTrigger?: boolean
 }) {
@@ -52,7 +50,13 @@ function DashboardHeader({
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b bg-background px-6">
       {showSidebarTrigger && (
-        <SidebarTrigger className="-ml-2 cursor-pointer md:hidden" />
+        <>
+          <SidebarTrigger className="-ml-2 cursor-pointer" />
+          <Separator
+            orientation="vertical"
+            className="mr-1 data-vertical:h-5 data-vertical:self-auto"
+          />
+        </>
       )}
 
       <h1 className="truncate text-base font-semibold">
@@ -77,21 +81,12 @@ function DashboardHeader({
         )}
         <ModeToggle className="size-9" />
 
-        <AccountMenu
-          user={user}
-          items={accountMenuItems}
-          align="end"
-          render={
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              className="cursor-pointer rounded-full"
-              aria-label="Account menu"
-            />
-          }
-        >
-          <UserAvatar user={user} className="size-9" />
-        </AccountMenu>
+        <Separator
+          orientation="vertical"
+          className="mx-1 data-vertical:h-5 data-vertical:self-auto"
+        />
+
+        <GitHubStarsButton stars={stars} className="h-9" />
       </div>
     </header>
   )

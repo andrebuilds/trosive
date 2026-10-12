@@ -203,53 +203,39 @@ model AppSetting {
   @@map("appSetting")
 }
 
-/// Not a Better Auth model. What Stripe knows about a workspace's subscription,
-/// mirrored here so rendering a page never has to call Stripe. Like `Avatar`,
-/// it carries a plain `organizationId` rather than a relation, so
-/// `auth:generate` can rewrite the models above without knowing about it.
+/// Not a Better Auth model. Bring your own key: the Anthropic API key a
+/// workspace pays for its answers with. Trosive has no plans and no limits, so
+/// this row is what turns the chat on.
 ///
-/// Written by the webhook handler and by the checkout-return reconcile, both of
-/// which take their values from Stripe — never from a client request. That is
-/// what makes `planId` an entitlement rather than a wish: a row only reaches a
-/// paid plan with an entitled `status` once Stripe says the money arrived.
-model Subscription {
-  id                   String    @id @default(cuid())
-  /// One workspace, one subscription.
-  organizationId       String    @unique
-  /// Created before checkout, so an abandoned checkout still leaves a customer
-  /// to reuse. On its own it grants nothing. Null on a workspace whose plan was
-  /// granted from the admin console — there's nobody to bill.
-  stripeCustomerId     String?   @unique
-  stripeSubscriptionId String?   @unique
-  /// Stripe's status verbatim — `active`, `trialing`, `past_due`, `canceled`.
-  /// Null until a subscription exists. See `isEntitled` in `lib/billing.ts`.
-  status               String?
-  /// `free`, `pro` or `business`, resolved from the price Stripe billed.
-  planId               String    @default("free")
-  priceId              String?
-  /// `monthly` or `annual`, for the "$19 / month" line.
-  interval             String?
-  /// End of the paid period: the renewal date, or the day access lapses when
-  /// `cancelAtPeriodEnd` is set.
-  currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean   @default(false)
-  /// The card on file, for the payment-method row. Brand and last four only —
-  /// the number never touches this database.
-  cardBrand            String?
-  cardLast4            String?
-  cardExpMonth         Int?
-  cardExpYear          Int?
-  /// Where this entitlement came from: `stripe` when money moved, `admin` when
-  /// an admin comped it from the console. Kept explicit rather than inferred
-  /// from a null `stripeSubscriptionId`, because the Billing tab has to say
-  /// which one it is and never show a comped plan as a paid one.
-  source               String    @default("stripe")
-  /// The admin who granted it. Null on everything Stripe wrote.
-  grantedByUserId      String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+/// One per workspace, set by its owner or an admin; members use it without
+/// ever seeing it. Like `Avatar`, a plain `organizationId` rather than a
+/// relation, so `auth:generate` can rewrite the models above without knowing
+/// about it.
+///
+/// The key itself is never stored in the clear: `ciphertext` is AES-256-GCM
+/// under a key derived from `BETTER_AUTH_SECRET` (`lib/crypto.ts`). Rotating
+/// that secret makes every stored key unreadable, and they have to be entered
+/// again.
+model WorkspaceApiKey {
+  id              String    @id @default(cuid())
+  organizationId  String    @unique
+  /// Only `anthropic` today. Stored so a second provider doesn't need a
+  /// migration to tell the rows apart.
+  provider        String    @default("anthropic")
+  /// `v1.<iv>.<tag>.<data>`, base64url. See `encryptSecret`.
+  ciphertext      String
+  /// What the UI shows instead of the key: `sk-ant-…AbCd`.
+  hint            String
+  /// `valid` once Anthropic accepted it, `invalid` after it rejected it.
+  status          String    @default("valid")
+  lastVerifiedAt  DateTime?
+  /// Why it was marked invalid, in words fit for the settings page.
+  lastError       String?
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  @@map("subscription")
+  @@map("workspaceApiKey")
 }
 
 /// Not a Better Auth model. Uploaded sources live in Postgres beside the text
@@ -335,11 +321,10 @@ model Message {
 
 /// Not a Better Auth model, and deliberately not a relation of anything.
 ///
-/// The allowance ledger: one row per question the workspace is charged for.
-/// `Message` can't be that record — clearing chat history deletes it, which
-/// would hand back the month's allowance along with the conversations. Nothing
-/// cascades into this table, so the only thing that moves the month's usage is
-/// asking another question.
+/// The usage ledger: one row per question asked. Nothing is charged against it
+/// any more (answers are billed to the workspace's own Anthropic key), but the
+/// home page, Usage and the admin console count it. `Message` can't be that
+/// record: clearing chat history deletes it. Nothing cascades into this table.
 model QuestionEvent {
   id             String   @id @default(cuid())
   organizationId String

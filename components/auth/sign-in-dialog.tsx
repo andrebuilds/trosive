@@ -3,8 +3,9 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
-import { requestPasswordReset, signIn } from "@/lib/auth-client"
+import { signIn } from "@/lib/auth-client"
 import type { SocialProviderId } from "@/lib/auth-providers"
+import { checkEmailHref, MAGIC_LINK_REDIRECTS } from "@/lib/check-email"
 import { APP_ROOT } from "@/lib/dashboard-nav"
 import {
   AuthDialogShell,
@@ -18,24 +19,6 @@ import {
   AuthSubmitButton,
 } from "@/components/auth/auth-form-parts"
 import { SocialAuthButtons } from "@/components/auth/social-auth-buttons"
-
-/** The dialog doubles as the entry point for password recovery. */
-type View = "credentials" | "forgot-password" | "reset-sent"
-
-const COPY: Record<View, { title: string; description: string }> = {
-  credentials: {
-    title: "Sign in to Trosive",
-    description: "Welcome back — continue to your workspace",
-  },
-  "forgot-password": {
-    title: "Reset your password",
-    description: "We'll email you a link to set a new one",
-  },
-  "reset-sent": {
-    title: "Check your inbox",
-    description: "If that email has an account, a reset link is on its way",
-  },
-}
 
 /** Sign-in modal — `ui-design/landing/light/12-sign-in-modal.png`. */
 function SignInDialog({
@@ -54,155 +37,69 @@ function SignInDialog({
   callbackURL?: string
 }) {
   const router = useRouter()
-  const [view, setView] = React.useState<View>("credentials")
   const [pending, setPending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   function handleOpenChange(next: boolean) {
-    if (!next) {
-      setError(null)
-      // Reset after the close animation so the copy doesn't swap mid-fade.
-      setTimeout(() => setView("credentials"), 150)
-    }
+    if (!next) setError(null)
     onOpenChange(next)
   }
 
-  function goTo(next: View) {
-    setError(null)
-    setView(next)
-  }
-
-  async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const form = new FormData(event.currentTarget)
     setPending(true)
     setError(null)
 
-    // No `callbackURL` here on purpose — passing one makes the client redirect
-    // itself, and we want to close the dialog before navigating.
-    const { error: signInError } = await signIn.email({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
+    // No passwords: the emailed link is the sign-in. An address without an
+    // account gets a sign-up link instead, and the same inbox page.
+    const email = String(form.get("email"))
+    const { error: sendError } = await signIn.magicLink({
+      email,
+      ...MAGIC_LINK_REDIRECTS,
     })
 
     setPending(false)
 
-    if (signInError) {
-      setError(authErrorMessage(signInError, "Could not sign you in."))
+    if (sendError) {
+      setError(authErrorMessage(sendError, "Could not send the link."))
       return
     }
 
     handleOpenChange(false)
-    router.push(APP_ROOT)
+    router.push(checkEmailHref(email))
   }
-
-  async function handleForgotPassword(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const form = new FormData(event.currentTarget)
-    setPending(true)
-    setError(null)
-
-    const { error: resetError } = await requestPasswordReset({
-      email: String(form.get("email")),
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
-
-    setPending(false)
-
-    if (resetError) {
-      setError(authErrorMessage(resetError, "Could not send the reset link."))
-      return
-    }
-
-    // Better Auth answers identically whether or not the address exists, so
-    // this screen must not imply the account was found.
-    setView("reset-sent")
-  }
-
-  const { title, description } = COPY[view]
 
   return (
     <AuthDialogShell
       open={open}
       onOpenChange={handleOpenChange}
-      title={title}
-      description={description}
+      title="Sign in to Trosive"
+      description="Welcome back, continue to your workspace"
       footer={
-        view === "credentials" ? (
-          <>
-            Don&apos;t have an account?{" "}
-            <AuthSwitchButton onClick={onSwitchToSignUp}>
-              Sign up
-            </AuthSwitchButton>
-          </>
-        ) : (
-          <>
-            Remembered it?{" "}
-            <AuthSwitchButton onClick={() => goTo("credentials")}>
-              Back to sign in
-            </AuthSwitchButton>
-          </>
-        )
+        <>
+          Don&apos;t have an account?{" "}
+          <AuthSwitchButton onClick={onSwitchToSignUp}>
+            Sign up
+          </AuthSwitchButton>
+        </>
       }
     >
-      {view === "credentials" && (
-        <div className="flex flex-col gap-5">
-          <SocialAuthButtons
-            providers={socialProviders}
-            callbackURL={callbackURL}
-            disabled={pending}
-            onError={(message) => setError(message || null)}
-          />
-          {socialProviders.length > 0 && <AuthDivider />}
+      <div className="flex flex-col gap-5">
+        <SocialAuthButtons
+          providers={socialProviders}
+          callbackURL={callbackURL}
+          disabled={pending}
+          onError={(message) => setError(message || null)}
+        />
+        {socialProviders.length > 0 && <AuthDivider />}
 
-          <form onSubmit={handleSignIn} className="flex flex-col gap-4">
-            <AuthFormError>{error}</AuthFormError>
-
-            <AuthField
-              id="sign-in-email"
-              name="email"
-              type="email"
-              label="Email address"
-              placeholder="you@company.com"
-              autoComplete="email"
-              required
-              disabled={pending}
-            />
-            <AuthField
-              id="sign-in-password"
-              name="password"
-              type="password"
-              label="Password"
-              placeholder="Your password"
-              autoComplete="current-password"
-              required
-              disabled={pending}
-              action={
-                <button
-                  type="button"
-                  onClick={() => goTo("forgot-password")}
-                  className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Forgot password?
-                </button>
-              }
-            />
-
-            <div className="mt-1">
-              <AuthSubmitButton pending={pending}>Continue</AuthSubmitButton>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {view === "forgot-password" && (
-        <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <AuthFormError>{error}</AuthFormError>
 
           <AuthField
-            id="forgot-password-email"
+            id="sign-in-email"
             name="email"
             type="email"
             label="Email address"
@@ -214,18 +111,14 @@ function SignInDialog({
 
           <div className="mt-1">
             <AuthSubmitButton pending={pending}>
-              Send reset link
+              Email me a link
             </AuthSubmitButton>
           </div>
+          <p className="text-center text-xs leading-relaxed text-muted-foreground">
+            No password needed. The link signs you in.
+          </p>
         </form>
-      )}
-
-      {view === "reset-sent" && (
-        <p className="text-center text-sm leading-relaxed text-muted-foreground">
-          Open the link within the hour to choose a new password. Nothing
-          arrived? Check your spam folder, then try again.
-        </p>
-      )}
+      </div>
     </AuthDialogShell>
   )
 }

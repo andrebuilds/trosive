@@ -9,6 +9,10 @@ Ask questions across your documents and get answers that cite the exact passage
 they came from. When the documents don't support an answer, Trosive says so
 instead of guessing.
 
+Trosive is free and open source, with no plans and no usage limits. It's
+**bring your own key**: every workspace adds its own Anthropic API key, and
+answers are billed by Anthropic to that key.
+
 **Website:** [trosive.com](https://trosive.com) · **Contact:** [hello@trosive.com](mailto:hello@trosive.com)
 
 [![CI](https://github.com/andrebuilds/trosive/actions/workflows/ci.yml/badge.svg)](https://github.com/andrebuilds/trosive/actions/workflows/ci.yml)
@@ -24,13 +28,14 @@ instead of guessing.
 - **Workspaces** — organizations with members, settings, and usage stats.
 - **Admin console** — users, workspaces, an append-only activity log, sign-up
   and maintenance switches, and chat retention.
-- **Optional billing** — Stripe Checkout and Customer Portal, off until you
-  configure it. Self-hosters can ignore it entirely.
+- **Bring your own key** — each workspace saves its own Anthropic API key,
+  checked with Anthropic before it's stored and encrypted at rest. No plans,
+  no limits, nothing to bill.
 
 ## Tech stack
 
 Next.js 16 · React 19 · Tailwind v4 · shadcn/ui · Better Auth · Prisma 7 ·
-Neon Postgres · Anthropic API · Resend · Stripe
+Neon Postgres · Anthropic API · Resend
 
 ## Getting started
 
@@ -70,15 +75,32 @@ copy both connection strings from the dashboard:
 - `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` — `http://localhost:3000` locally,
   your domain in production.
 
-### Anthropic (required for chat)
+### Anthropic API keys (bring your own key)
 
-`ANTHROPIC_API_KEY` from the [Anthropic console](https://console.anthropic.com/settings/keys).
-Without it the rest of the app works, but chat stays disabled.
+Nothing to set up on the server. After naming their workspace, the owner is
+asked for an Anthropic API key (they can skip it and add it later in
+**Settings → API key**). Owners and admins can replace or remove it there; other
+members see only whether it works.
+
+- The key is checked with Anthropic (`models.list`, which costs nothing) before
+  it's saved.
+- It's stored encrypted with AES-256-GCM, under a key derived from
+  `BETTER_AUTH_SECRET`. It's never sent back to the browser or logged; the UI
+  only ever shows a hint like `sk-ant-api03-…AbCd`.
+- If Anthropic later rejects it (revoked, out of credit), it's marked as not
+  working, the app says so, and the workspace's owners get an email.
+
+**Rotating `BETTER_AUTH_SECRET` makes every saved key unreadable.** Workspaces
+are then asked to enter their key again.
+
+`ANTHROPIC_API_KEY` is optional. When set, it answers for every workspace that
+hasn't saved a key of its own, which is handy for a private self-hosted
+instance. Leave it empty on a public one, or you pay for everybody.
 
 ### Email (optional, recommended)
 
-Without `RESEND_API_KEY`, verification and password-reset links are printed to
-the terminal instead of emailed — enough to test both flows locally. To send for
+Without `RESEND_API_KEY`, sign-in links and other emails are printed to the
+terminal instead of sent, which is enough to test the flows locally. To send for
 real, add a [Resend](https://resend.com) key and set `EMAIL_FROM` to an address
 on a domain you've verified there.
 
@@ -93,12 +115,6 @@ that provider are set, so you can skip this entirely.
 | GitHub   | [Developer settings](https://github.com/settings/developers)       | `http://localhost:3000/api/auth/callback/github` |
 
 Swap `localhost:3000` for your domain in production.
-
-### Billing (optional)
-
-Billing stays off — and every workspace sits on the Free plan — until
-`STRIPE_SECRET_KEY` and at least one `STRIPE_PRICE_*` are set. See
-`.env.example` for the webhook and price setup.
 
 ### Admin console
 
@@ -138,12 +154,6 @@ If you run a modified version as a public service, the AGPL requires you to
 offer your users its source. Point `repoUrl` in
 [`lib/site-config.ts`](lib/site-config.ts) at your fork — it's linked from the
 site footer.
-
-## Project layout
-
-[`AGENTS.md`](AGENTS.md) maps the codebase and records the conventions it
-follows (auth, workspaces, billing, the admin console). Read it before making
-non-trivial changes.
 
 ## Contributing
 

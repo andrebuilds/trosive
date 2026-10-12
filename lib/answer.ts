@@ -1,10 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk"
 
 import {
-  anthropic,
   ANTHROPIC_CACHE_CONTROL,
   ANTHROPIC_REQUEST_DEFAULTS,
   describeAnthropicError,
+  isInvalidKeyError,
 } from "@/lib/anthropic"
 import type { ChatSource } from "@/lib/chat"
 import { toDocumentBlock, type DocumentPayload } from "@/lib/documents"
@@ -22,7 +22,7 @@ import { toDocumentBlock, type DocumentPayload } from "@/lib/documents"
 export type AnswerEvent =
   | { type: "text"; value: string }
   | { type: "done"; sources: ChatSource[] }
-  | { type: "error"; value: string }
+  | { type: "error"; value: string; invalidKey?: boolean }
 
 /** Characters of document text kept either side of a quote, for context. */
 const CONTEXT_CHARS = 320
@@ -154,8 +154,13 @@ export function buildMessages(
  * Markers are written as `[1:0]` — source 1, passage 0 — so a click in the
  * answer can open that exact quote rather than just the document. The UI
  * renders only the `[1]` half.
+ *
+ * `client` carries the workspace's own key (bring your own key). An error
+ * event flags `invalidKey` when Anthropic rejected the key itself, so the route
+ * can mark it and tell the owners.
  */
 export async function* streamAnswer(
+  client: Anthropic,
   documents: DocumentPayload[],
   history: { role: "USER" | "ASSISTANT"; content: string }[]
 ): AsyncGenerator<AnswerEvent> {
@@ -163,7 +168,7 @@ export async function* streamAnswer(
   const indexByKey = new Map<string, number>()
 
   try {
-    const claude = anthropic.beta.messages.stream({
+    const claude = client.beta.messages.stream({
       ...ANTHROPIC_REQUEST_DEFAULTS,
       messages: buildMessages(documents, history),
     })
@@ -228,6 +233,10 @@ export async function* streamAnswer(
     yield { type: "done", sources }
   } catch (error) {
     console.error("[chat] answer failed", error)
-    yield { type: "error", value: describeAnthropicError(error) }
+    yield {
+      type: "error",
+      value: describeAnthropicError(error),
+      ...(isInvalidKeyError(error) ? { invalidKey: true } : {}),
+    }
   }
 }

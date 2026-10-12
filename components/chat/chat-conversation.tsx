@@ -5,14 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { PaperclipIcon } from "lucide-react"
 
 import {
-  allowanceSpentMessage,
+  canAsk,
+  NO_API_KEY_CODE,
+  noKeyMessage,
+  type ApiKeyStatus,
+} from "@/lib/byok"
+import {
   chatRoute,
   formatQuestionCount,
   type ChatDetail,
   type ChatMessageView,
   type ChatSource,
 } from "@/lib/chat"
-import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Bubble, BubbleContent } from "@/components/ui/bubble"
 import { InputGroupButton } from "@/components/ui/input-group"
@@ -31,6 +35,7 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller"
 import { Separator } from "@/components/ui/separator"
+import { ApiKeyBanner } from "@/components/api-key/api-key-banner"
 import { TrosiveMark } from "@/components/brand/trosive-logo"
 import { TypingDots } from "@/components/common/typing-dots"
 import { AnswerActions } from "@/components/chat/answer-actions"
@@ -176,9 +181,19 @@ function ChatTurn({
 }
 
 /** An open chat — `ui-design/dashboard/light/chat-page-chat.png`. */
-function ChatConversation({ chat }: { chat: ChatDetail }) {
+function ChatConversation({
+  chat,
+  keyStatus,
+}: {
+  chat: ChatDetail
+  /** The workspace's Anthropic key. Without a working one nothing is asked. */
+  keyStatus: ApiKeyStatus
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  // Checked here as well as on the server so nothing is sent just to be
+  // refused: the seeded analysis and a carried question both wait for a key.
+  const keyReady = canAsk(keyStatus)
 
   /**
    * A question carried in on the URL — from the command palette, which only
@@ -197,6 +212,7 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
       // gets the first turn, and the question waits in the composer instead of
       // racing it.
       autoAsk:
+        keyReady &&
         question.length > 0 &&
         searchParams.get("ask") === "1" &&
         !chat.pendingAnswer,
@@ -222,7 +238,7 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
   )
   const [streamed, setStreamed] = React.useState("")
   const [isAnswering, setIsAnswering] = React.useState(
-    chat.pendingAnswer || carried.autoAsk
+    (keyReady && chat.pendingAnswer) || carried.autoAsk
   )
   const [error, setError] = React.useState<string | null>(null)
   const [isAttachOpen, setIsAttachOpen] = React.useState(false)
@@ -251,11 +267,6 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
   const questionsThisMonth =
     chat.questionsThisMonth +
     Math.max(0, questionsAsked(messages) - questionsAsked(chat.messages))
-
-  // The server decides this for real — see the messages route. Here it only
-  // has to stop the composer offering a question that would be refused. The
-  // ceiling arrives with the chat, because it depends on the workspace's plan.
-  const allowanceSpent = questionsThisMonth >= chat.questionLimit
   const [activeCitation, setActiveCitation] =
     React.useState<ActiveCitation | null>(() => {
       const source = [...chat.messages]
@@ -287,6 +298,9 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
           const detail = await response.json().catch(() => null)
           setError(detail?.error ?? "Couldn't reach Trosive.")
           setIsAnswering(false)
+          // The key went away since the page loaded: the refresh brings the
+          // status that locks the composer and shows the way to add one.
+          if (detail?.code === NO_API_KEY_CODE) router.refresh()
           return
         }
 
@@ -320,6 +334,9 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
               setStreamed("")
               setError(event.value)
               setIsAnswering(false)
+              // Anthropic rejected the key and the server has marked it, so
+              // the banner and the sidebar should say so too.
+              if (event.invalidKey) router.refresh()
               return
             }
 
@@ -362,7 +379,7 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
    * question carried in from the search page. The ref guards both — React
    * mounts effects twice in dev, and either would otherwise be billed twice.
    */
-  const outstanding = chat.pendingAnswer || carried.autoAsk
+  const outstanding = (keyReady && chat.pendingAnswer) || carried.autoAsk
 
   React.useEffect(() => {
     if (!outstanding || requested.current) return
@@ -458,19 +475,26 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
 
         <div className="shrink-0 px-6 pb-4">
           <div className="mx-auto w-full max-w-3xl">
+            {!keyReady && (
+              <ApiKeyBanner
+                status={keyStatus}
+                variant="card"
+                className="mb-3"
+              />
+            )}
             <ChatComposer
               tone="outline"
-              // The server refuses either way; this is so a spent allowance
-              // reads as spent rather than as a question that vanished.
-              disabled={isAnswering || allowanceSpent}
+              // The server refuses either way; this is so a missing key reads
+              // as missing rather than as a question that vanished.
+              disabled={isAnswering || !keyReady}
               onSend={ask}
               // Only the prefill case: an auto-asked question is already in
               // the thread, and leaving a copy here invites asking it twice.
               defaultValue={carried.autoAsk ? "" : carried.question}
               placeholder={
-                allowanceSpent
-                  ? allowanceSpentMessage(chat.questionLimit)
-                  : "Ask a follow-up about your documents…"
+                keyReady
+                  ? "Ask a follow-up about your documents…"
+                  : noKeyMessage(keyStatus)
               }
               footer={
                 <>
@@ -497,16 +521,8 @@ function ChatConversation({ chat }: { chat: ChatDetail }) {
                     disabled={isAnswering}
                   />
 
-                  <span
-                    className={cn(
-                      "ml-auto font-mono text-xs text-muted-foreground",
-                      allowanceSpent && "text-destructive"
-                    )}
-                  >
-                    {formatQuestionCount(
-                      questionsThisMonth,
-                      chat.questionLimit
-                    )}
+                  <span className="ml-auto font-mono text-xs text-muted-foreground">
+                    {formatQuestionCount(questionsThisMonth)} this month
                   </span>
                 </>
               }

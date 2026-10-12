@@ -7,7 +7,9 @@ import Anthropic from "@anthropic-ai/sdk"
  * component (same rule as `lib/auth.ts`). Client-side copy and limits live in
  * `lib/chat.ts`.
  *
- * The key is `ANTHROPIC_API_KEY` in `.env` — see `.env.example`.
+ * Bring your own key: every request runs on the workspace's own Anthropic key,
+ * resolved per request by `lib/api-keys.ts`. `ANTHROPIC_API_KEY` in `.env` is
+ * only an optional fallback for self-hosting — see `.env.example`.
  */
 
 /** Answers questions over a chat's documents. */
@@ -144,35 +146,29 @@ export const ANTHROPIC_REQUEST_DEFAULTS = {
  */
 export const ANTHROPIC_CACHE_CONTROL = { type: "ephemeral" } as const
 
-/** The key, or `undefined` when it hasn't been set yet. */
-export function anthropicApiKey() {
+/**
+ * The server's own key, `ANTHROPIC_API_KEY`, or `undefined`.
+ *
+ * Optional, and meant for self-hosting: Trosive is bring-your-own-key, so on a
+ * shared instance like trosive.com this stays unset and every workspace pays
+ * with its own key. When it is set, it answers for workspaces that haven't
+ * saved one. See `resolveAnthropicKey` in `lib/api-keys.ts`.
+ */
+export function instanceAnthropicKey() {
   return process.env.ANTHROPIC_API_KEY || undefined
 }
 
-/** Chat is disabled — and says so — until the key is present. */
-export function isAnthropicConfigured() {
-  return Boolean(anthropicApiKey())
+/**
+ * A client for one request, on the key that request resolved to.
+ *
+ * Not a singleton: the key differs per workspace, and the SDK's zero-arg
+ * constructor would silently fall back to `ANTHROPIC_API_KEY` and bill the
+ * server for somebody else's question. Construction is cheap; Node's global
+ * agent pools the connections either way.
+ */
+export function createAnthropicClient(apiKey: string) {
+  return new Anthropic({ apiKey })
 }
-
-function createAnthropicClient() {
-  // Zero-arg: the SDK resolves ANTHROPIC_API_KEY itself, so the key never has
-  // to be threaded through call sites.
-  return new Anthropic()
-}
-
-// Dev hot-reload re-evaluates modules on every edit; reuse the client so each
-// reload doesn't leak another keep-alive agent.
-const globalForAnthropic = globalThis as unknown as {
-  anthropic?: Anthropic
-}
-
-const anthropic = globalForAnthropic.anthropic ?? createAnthropicClient()
-
-if (process.env.NODE_ENV !== "production") {
-  globalForAnthropic.anthropic = anthropic
-}
-
-export { anthropic }
 
 export type AnthropicAnswer =
   | { ok: true; text: string }
@@ -207,21 +203,25 @@ export function readAnswer(
 /**
  * Turns an SDK failure into something worth showing a user.
  *
+ * The key is the workspace's own, so the copy says "your" and points at what
+ * the reader can fix: a revoked key, a key without access to the model, or an
+ * Anthropic account out of credit.
+ *
  * Ordered most-specific first, and `APIConnectionError` before `APIError`
  * because it's a subclass in this SDK — reversing them would swallow every
  * network failure into the generic branch.
  */
 export function describeAnthropicError(error: unknown) {
   if (error instanceof Anthropic.AuthenticationError) {
-    return "Trosive's Anthropic key is missing or invalid."
+    return "Anthropic rejected your API key. It may have been revoked: replace it in Settings, API key."
   }
 
   if (error instanceof Anthropic.PermissionDeniedError) {
-    return "Trosive's Anthropic key isn't allowed to use this model."
+    return `Your Anthropic API key isn't allowed to use ${ANTHROPIC_MODEL}. Check the key's workspace in the Anthropic Console.`
   }
 
   if (error instanceof Anthropic.RateLimitError) {
-    return "Anthropic is rate limiting us. Try that again in a moment."
+    return "Your Anthropic account hit its rate limit. Try that again in a moment."
   }
 
   if (error instanceof Anthropic.APIConnectionError) {
@@ -229,8 +229,18 @@ export function describeAnthropicError(error: unknown) {
   }
 
   if (error instanceof Anthropic.APIError) {
+    // Out of credit comes back as a 400 whose message says so.
+    if (/credit balance/i.test(error.message)) {
+      return "Your Anthropic account is out of credit. Add some in the Anthropic Console, then ask again."
+    }
+
     return `Anthropic returned an error (${error.status ?? "unknown"}).`
   }
 
   return "Something went wrong generating that answer."
+}
+
+/** True when Anthropic said the key itself is no good, not just the request. */
+export function isInvalidKeyError(error: unknown) {
+  return error instanceof Anthropic.AuthenticationError
 }

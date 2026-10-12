@@ -2,35 +2,23 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { CheckIcon, CopyIcon, TriangleAlertIcon } from "lucide-react"
+import { TriangleAlertIcon } from "lucide-react"
 
-import {
-  ACCOUNT_TYPES,
-  adminUsersHref,
-  MIN_CREATED_PASSWORD_LENGTH,
-} from "@/lib/admin"
-import type { PlanId } from "@/lib/billing"
-import { cn } from "@/lib/utils"
+import { adminUsersHref } from "@/lib/admin"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { toast } from "@/components/ui/toast"
 
 type CreatedUser = {
   email: string
-  /** Only when the server generated it — there's nowhere else to read it. */
-  password: string | null
   warning?: string
 }
 
 /**
- * The credentials panel that replaces the form once an account exists.
- *
- * A generated password is shown exactly once: it is never stored in the clear,
- * so this render is the only chance anyone has to pass it on. Saying that out
- * loud is the difference between an admin copying it now and an admin coming
- * back for it tomorrow.
+ * The panel that replaces the form once an account exists. There's no
+ * password to hand over: the welcome email is already on its way, and they
+ * sign in with Google, GitHub or an emailed link like everyone else.
  */
 function CreatedPanel({
   created,
@@ -39,30 +27,13 @@ function CreatedPanel({
   created: CreatedUser
   onCreateAnother: () => void
 }) {
-  const [copied, setCopied] = React.useState(false)
-
-  async function copy() {
-    if (!created.password) return
-
-    try {
-      await navigator.clipboard.writeText(created.password)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.add({
-        type: "error",
-        title: "Couldn't copy that.",
-        description: "Select the password and copy it by hand.",
-      })
-    }
-  }
-
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h3 className="font-heading text-lg font-semibold">Account created</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          {created.email} can sign in now.
+          We sent {created.email} a welcome email. They sign in with that
+          address, using an emailed link or Google or GitHub.
         </p>
       </div>
 
@@ -71,32 +42,6 @@ function CreatedPanel({
           <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
           <span>{created.warning}</span>
         </p>
-      )}
-
-      {created.password && (
-        <div className="rounded-lg border bg-muted/40 p-4">
-          <p className="text-sm font-medium">Temporary password</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Shown once, and never stored in a form anyone can read back. Copy it
-            before you leave this page.
-          </p>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <code className="flex-1 rounded-md border bg-background px-3 py-2 font-mono text-sm break-all">
-              {created.password}
-            </code>
-
-            <Button
-              variant="outline"
-              size="lg"
-              className="cursor-pointer px-4"
-              onClick={copy}
-            >
-              {copied ? <CheckIcon /> : <CopyIcon />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-          </div>
-        </div>
       )}
 
       <div className="flex flex-wrap justify-end gap-3">
@@ -127,8 +72,8 @@ function CreatedPanel({
  *
  * The form collects; the server decides. Every value here is validated again in
  * `POST /api/admin/users`, which is also where the caller's admin role is
- * checked — this component being reachable is never the reason a user gets
- * created, let alone one on a paid plan.
+ * checked: this component being reachable is never the reason a user gets
+ * created.
  */
 function AdminCreateUserForm() {
   const router = useRouter()
@@ -138,16 +83,12 @@ function AdminCreateUserForm() {
 
   const [name, setName] = React.useState("")
   const [email, setEmail] = React.useState("")
-  const [password, setPassword] = React.useState("")
-  const [planId, setPlanId] = React.useState<PlanId>("free")
 
   function reset() {
     setCreated(null)
     setError(null)
     setName("")
     setEmail("")
-    setPassword("")
-    setPlanId("free")
   }
 
   async function submit(event: React.FormEvent) {
@@ -159,7 +100,7 @@ function AdminCreateUserForm() {
       const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, planId }),
+        body: JSON.stringify({ name, email }),
       })
 
       const payload = await response.json().catch(() => null)
@@ -171,7 +112,6 @@ function AdminCreateUserForm() {
 
       setCreated({
         email: payload.email,
-        password: payload.password ?? null,
         warning: payload.warning,
       })
 
@@ -194,8 +134,8 @@ function AdminCreateUserForm() {
       <div>
         <h3 className="font-heading text-lg font-semibold">Create a user</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add a user directly. They can sign in immediately with these
-          credentials.
+          Add a user directly. They get a welcome email and sign in with this
+          address, no password needed.
         </p>
       </div>
 
@@ -226,65 +166,10 @@ function AdminCreateUserForm() {
         />
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor="admin-new-password">Temporary password</FieldLabel>
-        <Input
-          id="admin-new-password"
-          type="text"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="Auto-generated if left blank"
-          autoComplete="off"
-          minLength={MIN_CREATED_PASSWORD_LENGTH}
-          disabled={isSaving}
-        />
-      </Field>
-
-      <fieldset disabled={isSaving}>
-        <legend className="text-sm font-medium">Account type</legend>
-
-        <div className="mt-2 grid gap-3 sm:grid-cols-3">
-          {ACCOUNT_TYPES.map((option) => {
-            const isSelected = option.planId === planId
-
-            return (
-              <label
-                key={option.planId}
-                className={cn(
-                  "cursor-pointer rounded-xl border p-4 transition-colors",
-                  isSelected
-                    ? "border-brand bg-brand/10"
-                    : "hover:border-foreground/20"
-                )}
-              >
-                {/* A radio group, not three buttons: arrow keys move between
-                    them and the choice is announced as one control. */}
-                <input
-                  type="radio"
-                  name="account-type"
-                  value={option.planId}
-                  checked={isSelected}
-                  onChange={() => setPlanId(option.planId)}
-                  className="sr-only"
-                />
-                <span className="block text-sm font-semibold">
-                  {option.name}
-                </span>
-                <span className="mt-0.5 block text-sm text-muted-foreground">
-                  {option.detail}
-                </span>
-              </label>
-            )
-          })}
-        </div>
-      </fieldset>
-
-      {planId !== "free" && (
-        <p className="text-sm text-muted-foreground">
-          This grants the plan without a payment. It&apos;s recorded as granted
-          by you, and their Billing tab will say so rather than showing a price.
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        Their workspace starts without an Anthropic API key. They add their own
+        in Settings, API key, before asking questions.
+      </p>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

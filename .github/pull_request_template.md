@@ -11,4 +11,3 @@
 - [ ] `npm run lint`, `npm run typecheck` and Prettier pass
 - [ ] Schema changes come with a migration in `prisma/migrations/`
 - [ ] New env vars are documented in `.env.example`
-- [ ] `AGENTS.md` is updated if this changes a convention it describes

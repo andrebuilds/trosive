@@ -32,12 +32,12 @@ const FAQS = [
   {
     question: "Does it integrate with my existing tools?",
     answer:
-      "Pro and Business connect to Google Drive and Notion to keep sources in sync. Any conversation can be exported to Markdown or shared as a link.",
+      "Trosive connects to Google Drive and Notion to keep sources in sync. Any conversation can be exported to Markdown or shared as a link.",
   },
   {
-    question: "What's the difference between plans?",
+    question: "Why do I need my own API key?",
     answer:
-      "Questions per month is the only limit that changes. Free covers 5 documents and 5 questions, Pro removes the document limit and raises questions to 50, and Business makes questions unlimited.",
+      "Trosive is open source and free, with no plans and no limits. Answers come from Claude, on your own Anthropic API key, so you pay Anthropic directly at their prices with nothing added on top. The key is stored encrypted and you can remove it at any time.",
   },
 ]
 
@@ -52,10 +52,14 @@ function Faqs() {
 
       <Accordion className="mt-10 border-t">
         {FAQS.map((faq) => (
-          <AccordionItem key={faq.question} value={faq.question} className="border-b">
+          <AccordionItem
+            key={faq.question}
+            value={faq.question}
+            className="border-b"
+          >
             {/* The component ships a chevron; swap it for the plus the design
                 uses, which rotates into a close icon when the panel opens. */}
-            <AccordionTrigger className="cursor-pointer gap-6 py-4 text-base font-semibold **:data-[slot=accordion-trigger-icon]:hidden hover:no-underline">
+            <AccordionTrigger className="cursor-pointer gap-6 py-4 text-base font-semibold hover:no-underline **:data-[slot=accordion-trigger-icon]:hidden">
               {faq.question}
               <PlusIcon className="mt-0.5 ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-aria-expanded/accordion-trigger:rotate-45" />
             </AccordionTrigger>

@@ -4,7 +4,7 @@ import { MaintenanceNotice } from "@/components/admin/maintenance-notice"
 
 /**
  * The signed-in boundary. Chrome lives one level down — `(workspace)` gets the
- * sidebar, `onboarding` gets a bare header — because a user without a
+ * sidebar, `onboarding` gets none — because a user without a
  * workspace has nothing to navigate to yet.
  */
 export default async function AppLayout({

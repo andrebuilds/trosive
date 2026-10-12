@@ -24,7 +24,9 @@ function Hero() {
           className="h-8 gap-0 p-0 text-sm font-normal text-muted-foreground"
         >
           <span className="flex h-full items-center bg-foreground px-2.5 text-xs font-semibold tracking-wider text-background uppercase">
-            Open source
+            {/* Free with no limits because answers run on the user's own
+                Anthropic key: worth saying before anyone signs up. */}
+            Open source · BYOK
           </span>
           <span className="flex items-center gap-2 px-3">
             <span aria-hidden className="size-1.5 animate-pulse bg-brand" />

@@ -2,17 +2,10 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import {
-  ArrowUpIcon,
-  CircleAlertIcon,
-  MailIcon,
-  MoreVerticalIcon,
-  RotateCcwIcon,
-} from "lucide-react"
+import { CircleAlertIcon, MoreVerticalIcon, RotateCcwIcon } from "lucide-react"
 
 import type { AdminUserRow } from "@/lib/admin"
 import { authClient } from "@/lib/auth-client"
-import { nextPlanUp, planName } from "@/lib/billing"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +21,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/ui/spinner"
@@ -42,53 +34,17 @@ import { toast } from "@/components/ui/toast"
  * component, so the menu takes the row it acts on as a plain prop rather than
  * refetching it.
  *
- * Both actions go through `authClient.admin.*` and the password-reset endpoint
- * rather than routes of our own: Better Auth already authorizes them against
- * the caller's role, so there's no second implementation of "is this an admin"
- * to keep in step with the first.
+ * Deactivating goes through `authClient.admin.*` rather than a route of our
+ * own: Better Auth already authorizes it against the caller's role, so there's
+ * no second implementation of "is this an admin" to keep in step with the
+ * first.
  */
 function AdminUserRowActions({ user }: { user: AdminUserRow }) {
   const router = useRouter()
-  const [isSendingReset, setIsSendingReset] = React.useState(false)
   const [isConfirming, setIsConfirming] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
 
   const isDeactivated = user.status === "deactivated"
-  const upgrade = nextPlanUp(user.planId)
-
-  async function sendPasswordReset() {
-    setIsSendingReset(true)
-
-    try {
-      const { error } = await authClient.requestPasswordReset({
-        email: user.email,
-        redirectTo: "/reset-password",
-      })
-
-      if (error) {
-        toast.add({
-          type: "error",
-          title: "Couldn't send that reset.",
-          description: error.message ?? "Try again in a moment.",
-        })
-        return
-      }
-
-      toast.add({
-        type: "success",
-        title: "Password reset sent.",
-        description: `${user.email} can set a new password from the link.`,
-      })
-    } catch {
-      toast.add({
-        type: "error",
-        title: "Couldn't send that reset.",
-        description: "Check your connection and try again.",
-      })
-    } finally {
-      setIsSendingReset(false)
-    }
-  }
 
   /**
    * Deactivating bans the account: Better Auth then refuses their sign-ins and
@@ -157,24 +113,8 @@ function AdminUserRowActions({ user }: { user: AdminUserRow }) {
         />
 
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem
-            className="cursor-pointer"
-            disabled={isSendingReset}
-            onClick={sendPasswordReset}
-          >
-            {isSendingReset ? <Spinner /> : <MailIcon />}
-            Send password reset
-          </DropdownMenuItem>
-
-          {/* Reading, not doing: an admin can see what someone is paying for,
-              but a plan is something the workspace buys — granting one here
-              would hand out a paid plan nobody paid for. */}
-          <DropdownMenuItem disabled className="opacity-100">
-            <ArrowUpIcon />
-            {upgrade ? `On ${planName(user.planId)} plan` : "On highest plan"}
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
+          {/* No "Send password reset": there are no passwords. Anyone locked
+              out asks for a fresh sign-in link from the sign-in dialog. */}
 
           <DropdownMenuItem
             variant={isDeactivated ? "default" : "destructive"}

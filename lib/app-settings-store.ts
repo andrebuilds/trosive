@@ -75,7 +75,7 @@ export async function updateAppSettings(
  * rather than a preference.
  *
  * Chats only. Documents are the workspace's own uploads and questions are the
- * billing ledger (see `QuestionEvent`); neither is conversation history, and
+ * usage ledger (see `QuestionEvent`); neither is conversation history, and
  * neither is what the setting promises to clear. Messages and citations go with
  * their chat through the schema's cascade.
  *

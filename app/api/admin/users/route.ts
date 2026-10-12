@@ -1,33 +1,24 @@
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { generatedPassword, MIN_CREATED_PASSWORD_LENGTH } from "@/lib/admin"
-import {
-  describePlanGranted,
-  describeUserCreated,
-  LOG_ACTIONS,
-} from "@/lib/admin-log"
+import { describeUserCreated, LOG_ACTIONS } from "@/lib/admin-log"
 import { actorNameFor, recordAdminLog } from "@/lib/admin-log-store"
 import { requireApiAdmin } from "@/lib/api-session"
 import { auth } from "@/lib/auth"
-import { isPaidPlanId, type PlanId } from "@/lib/billing"
-import { grantPlan } from "@/lib/billing-store"
 import { db } from "@/lib/db"
 import { organizationSlug, uniqueSlugSuffix } from "@/lib/organization"
 
 /**
  * Creates a user from the admin console — `admin-add-user-page.png`.
  *
- * Three things happen, in this order, and the order matters: the account, then
- * a workspace for it, then the plan if one was chosen. A user without a
- * workspace can't reach the product (they'd land on onboarding), and a plan is
- * held by a workspace, so "create an account on Business" isn't expressible
- * until the first two exist.
+ * Two things happen, in this order: the account, then a workspace for it. A
+ * user without a workspace can't reach the product (they'd land on
+ * onboarding). The workspace starts with no Anthropic key; its owner adds one.
  *
  * Every check is server-side. `requireApiAdmin` is the only thing standing
- * between this endpoint and a stranger creating themselves a Business account,
- * so nothing here reads a role, a plan or an id out of the request body except
- * as a value to validate.
+ * between this endpoint and a stranger creating themselves accounts, so
+ * nothing here reads a role or an id out of the request body except as a value
+ * to validate.
  */
 
 /** Slug collisions are possible but rare; a couple of retries is plenty. */
@@ -46,8 +37,8 @@ function workspaceNameFor(name: string) {
  * Called deliberately *without* headers. `body.userId` is only honoured when
  * the endpoint sees no session — with the admin's cookies attached, Better Auth
  * treats the admin as the creator and hands them the workspace, which is how
- * this went wrong the first time: the new user got no workspace and the plan
- * landed on the admin's own membership.
+ * this went wrong the first time: the new user got no workspace and the admin
+ * got a second one.
  *
  * Passing no session makes this a system action, which means Better Auth does
  * no permission check of its own here. `requireApiAdmin()` at the top of the
@@ -85,14 +76,10 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     name?: string
     email?: string
-    password?: string
-    planId?: string
   } | null
 
   const name = body?.name?.trim() ?? ""
   const email = body?.email?.trim().toLowerCase() ?? ""
-  const requestedPassword = body?.password ?? ""
-  const planId = (body?.planId ?? "free") as PlanId
 
   if (!name) {
     return NextResponse.json({ error: "Enter a username." }, { status: 400 })
@@ -104,22 +91,6 @@ export async function POST(request: Request) {
   if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json(
       { error: "Enter a valid email address." },
-      { status: 400 }
-    )
-  }
-
-  if (planId !== "free" && !isPaidPlanId(planId)) {
-    return NextResponse.json({ error: "Unknown plan." }, { status: 400 })
-  }
-
-  if (
-    requestedPassword &&
-    requestedPassword.length < MIN_CREATED_PASSWORD_LENGTH
-  ) {
-    return NextResponse.json(
-      {
-        error: `A password needs at least ${MIN_CREATED_PASSWORD_LENGTH} characters.`,
-      },
       { status: 400 }
     )
   }
@@ -136,18 +107,14 @@ export async function POST(request: Request) {
     )
   }
 
-  // Blank means "auto-generated", as the field's placeholder promises. It's
-  // returned to the admin once, in the response, and never stored in the clear.
-  const password = requestedPassword || generatedPassword()
-  const wasGenerated = !requestedPassword
-
   let created
   try {
     created = await auth.api.createUser({
       body: {
         name,
         email,
-        password,
+        // No password: there are none. They sign in with an emailed link or
+        // Google/GitHub, and the first link opened confirms the address.
         // Everyone made here is a plain user. Promoting somebody to admin is a
         // separate, deliberate act — not a dropdown on a creation form.
         role: "user",
@@ -168,34 +135,14 @@ export async function POST(request: Request) {
 
   await recordAdminLog({
     action: LOG_ACTIONS.userCreated,
-    description: describeUserCreated(email, planId),
+    description: describeUserCreated(email),
     actorId: guard.userId,
     actorName,
     targetId: userId,
   })
 
   try {
-    const organization = await createWorkspaceFor(userId, name)
-
-    // Only a paid plan is a grant; `free` is what every workspace already is,
-    // and writing a row for it would invent an entitlement out of a default.
-    if (organization && planId !== "free") {
-      await grantPlan({
-        organizationId: organization.id,
-        planId,
-        grantedByUserId: guard.userId,
-      })
-
-      // Logged separately from the account: comping a plan is its own decision,
-      // and an auditor reading the log should see it as one.
-      await recordAdminLog({
-        action: LOG_ACTIONS.planGranted,
-        description: describePlanGranted(name, planId),
-        actorId: guard.userId,
-        actorName,
-        targetId: userId,
-      })
-    }
+    await createWorkspaceFor(userId, name)
   } catch (error) {
     // The account exists and can sign in; it just has no workspace yet, which
     // onboarding will ask them for. Worth saying so rather than implying the
@@ -206,7 +153,6 @@ export async function POST(request: Request) {
       {
         userId,
         email,
-        password: wasGenerated ? password : null,
         warning:
           "The account was created, but its workspace wasn't. They'll be asked to name one when they first sign in.",
       },
@@ -214,12 +160,5 @@ export async function POST(request: Request) {
     )
   }
 
-  return NextResponse.json({
-    userId,
-    email,
-    // Shown to the admin once so they can pass it on — there is nowhere else to
-    // read it from afterwards.
-    password: wasGenerated ? password : null,
-    planId,
-  })
+  return NextResponse.json({ userId, email })
 }

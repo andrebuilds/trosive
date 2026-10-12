@@ -4,7 +4,6 @@ import {
   ADMIN_SECURITY_ROUTE,
   ADMIN_USERS_ROUTE,
 } from "@/lib/dashboard-nav"
-import type { PlanId } from "@/lib/billing"
 
 /**
  * The admin console's shapes, routes and copy — no database, no auth config,
@@ -79,8 +78,9 @@ export type AdminOverview = {
   questionsThisMonth: number
   /** Signed in or asked something inside the activity window. */
   activeUsers: number
-  /** People on an entitled plan, over every account there is. */
-  paidSubscribers: number
+  /** Workspaces with a working Anthropic key of their own. */
+  workspacesWithKey: number
+  totalWorkspaces: number
   totalUsers: number
   /** Busiest people this month, most questions first. */
   mostActive: AdminActiveUser[]
@@ -136,8 +136,8 @@ export type AdminUserRow = {
   name: string
   email: string
   image: string | null
-  /** Best plan across the workspaces they belong to; `free` if none is paid. */
-  planId: PlanId
+  /** True when a workspace they belong to has a working Anthropic key. */
+  hasApiKey: boolean
   status: AdminUserStatus
   /** ISO timestamp of their last sign-in or question; null if neither. */
   lastActive: string | null
@@ -179,56 +179,3 @@ export function lastActiveLabel(
 
   return `${Math.floor(days / 365)}y ago`
 }
-
-/* -------------------------------------------------------------------------
- * Add user tab — `ui-design/dashboard/light/admin-add-user-page.png`
- * ---------------------------------------------------------------------- */
-
-/**
- * The floor for a password an admin types in. Matches the sign-up form's own
- * minimum — an account made here signs in through exactly the same door.
- */
-export const MIN_CREATED_PASSWORD_LENGTH = 8
-
-/** Characters for a generated password. */
-const PASSWORD_ALPHABET =
-  "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-
-const GENERATED_PASSWORD_LENGTH = 16
-
-/**
- * A password for an account whose creator left the field blank.
- *
- * `crypto.getRandomValues` rather than `Math.random`: this is a live
- * credential, and `Math.random` is predictable enough to guess from a couple of
- * outputs. The alphabet drops the characters people misread when copying one
- * out of a chat window — no l/I/1, no O/0.
- */
-export function generatedPassword() {
-  const bytes = crypto.getRandomValues(
-    new Uint32Array(GENERATED_PASSWORD_LENGTH)
-  )
-
-  return Array.from(
-    bytes,
-    (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length]
-  ).join("")
-}
-
-/** One card in the "Account type" picker. */
-export type AccountTypeOption = {
-  planId: PlanId
-  name: string
-  /** The limit that actually changes between plans. */
-  detail: string
-}
-
-/**
- * The three cards, in ladder order. The detail line quotes the real question
- * allowance, so the picker can't drift from what the plan actually grants.
- */
-export const ACCOUNT_TYPES: AccountTypeOption[] = [
-  { planId: "free", name: "Free", detail: "5 questions/mo" },
-  { planId: "pro", name: "Pro", detail: "50 questions/mo" },
-  { planId: "business", name: "Business", detail: "Unlimited" },
-]

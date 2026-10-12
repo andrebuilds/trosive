@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import {
-  BILLING_ROUTE,
+  API_KEY_ROUTE,
   DANGER_ZONE_ROUTE,
   SETTINGS_ROUTE,
 } from "@/lib/dashboard-nav"
@@ -14,7 +14,7 @@ const SETTINGS_TABS = [
   // "Profile" in the reference; "Account" here, to match the sidebar entry and
   // the account menu that both point at it.
   { href: SETTINGS_ROUTE, label: "Account" },
-  { href: BILLING_ROUTE, label: "Billing" },
+  { href: API_KEY_ROUTE, label: "API key" },
   { href: DANGER_ZONE_ROUTE, label: "Danger zone" },
 ]
 

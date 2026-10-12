@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowRightIcon } from "lucide-react"
 
 import { organization } from "@/lib/auth-client"
-import { APP_ROOT } from "@/lib/dashboard-nav"
+import { ONBOARDING_API_KEY_ROUTE } from "@/lib/dashboard-nav"
 import { organizationSlug, uniqueSlugSuffix } from "@/lib/organization"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -50,9 +50,10 @@ function CreateOrganizationForm() {
       })
 
       if (!createError) {
-        // Stay on the loading state through the navigation — the workspace is
-        // ready, and flashing the empty form back would read as a failure.
-        router.replace(APP_ROOT)
+        // On to step two, the Anthropic key. Stay on the loading state through
+        // the navigation: the workspace is ready, and flashing the empty form
+        // back would read as a failure.
+        router.replace(ONBOARDING_API_KEY_ROUTE)
         router.refresh()
         return
       }

@@ -1,16 +1,7 @@
 import { cache } from "react"
 
-import {
-  getWorkspacePlan,
-  getWorkspaceQuestionLimit,
-} from "@/lib/billing-store"
-import { planQuestionLimit, type PlanId } from "@/lib/billing"
 import { db } from "@/lib/db"
-import {
-  questionAllowance,
-  toPlainText,
-  type QuestionAllowance,
-} from "@/lib/chat"
+import { toPlainText } from "@/lib/chat"
 import type {
   ChatDetail,
   ChatMessageView,
@@ -54,16 +45,16 @@ import {
  */
 
 /**
- * Questions asked across the workspace this calendar month.
+ * Questions asked across the workspace this calendar month. Nothing is capped
+ * on it: it's a usage figure, for the home page, the usage page and the admin
+ * console.
  *
- * Counted from `questionEvent`, not from the messages in chat history: the
- * allowance is what the workspace has spent, and deleting the conversation it
- * was spent on doesn't hand it back. Nothing cascades into that table, so
- * clearing history, clearing the library, or deleting a single chat all leave
- * this figure alone.
+ * Counted from `questionEvent`, not from the messages in chat history, so it
+ * reports what was actually asked of Anthropic on the workspace's key even
+ * after the conversation is deleted. Nothing cascades into that table.
  *
- * The seeded brief-analysis request never lands here — the developer didn't
- * ask it, so it isn't charged for it.
+ * The seeded brief-analysis request never lands here: the developer didn't
+ * ask it.
  */
 export async function countQuestionsThisMonth(organizationId: string) {
   const now = new Date()
@@ -77,30 +68,11 @@ export async function countQuestionsThisMonth(organizationId: string) {
 }
 
 /**
- * What's left of the month's allowance.
- *
- * The one place that decides whether another question may be asked — the
- * composer shows what it returns, and the messages route refuses on it. The
- * ceiling is the workspace's plan, so a lapsed subscription tightens it on the
- * very next question without anything having to run a downgrade.
- */
-export async function getQuestionAllowance(
-  organizationId: string
-): Promise<QuestionAllowance> {
-  const [used, limit] = await Promise.all([
-    countQuestionsThisMonth(organizationId),
-    getWorkspaceQuestionLimit(organizationId),
-  ])
-
-  return questionAllowance(used, limit)
-}
-
-/**
- * Charges a question to the workspace's allowance.
+ * Logs a question for the usage figures.
  *
  * Written alongside the message rather than derived from it, so the two can
  * part ways: the message is conversation history the developer may delete, and
- * this row is the billing record they may not.
+ * this row is the usage record they may not.
  */
 export async function recordQuestion({
   organizationId,
@@ -476,7 +448,7 @@ export async function getUsage(organizationId: string): Promise<UsageView> {
         select: { createdAt: true },
       }),
       // Message rows, for the two figures that are about answers rather than
-      // allowance: how long they took, and what they cited.
+      // counts: how long they took, and what they cited.
       db.message.findMany({
         where: {
           chat: { organizationId },
@@ -570,7 +542,6 @@ export async function getUsage(organizationId: string): Promise<UsageView> {
   return {
     period,
     questions,
-    questionLimit: await getWorkspaceQuestionLimit(organizationId),
     documentsIndexed,
     citations,
     averageAnswerSeconds:
@@ -706,17 +677,13 @@ export async function getChat(
   if (!chat) return null
 
   const last = chat.messages.at(-1)
-  const [questionsThisMonth, questionLimit] = await Promise.all([
-    countQuestionsThisMonth(organizationId),
-    getWorkspaceQuestionLimit(organizationId),
-  ])
+  const questionsThisMonth = await countQuestionsThisMonth(organizationId)
 
   return {
     id: chat.id,
     title: chat.title,
     documents: chat.documents.map((link) => link.document),
     questionsThisMonth,
-    questionLimit,
     // The seeded analysis request is context for Claude, not part of the thread.
     messages: chat.messages
       .filter((message) => !message.hidden)
@@ -1008,35 +975,24 @@ export type WorkspaceStats = {
   documentsIndexed: number
   /** Documents still being read, or that failed. */
   documentsPending: number
-  /** Questions asked this calendar month, against the plan's allowance. */
+  /** Questions asked this calendar month. A count, not a quota. */
   questionsThisMonth: number
-  /** The plan the workspace is entitled to — `free` unless Stripe says otherwise. */
-  planId: PlanId
-  /** That plan's monthly questions; `Infinity` on Business. */
-  questionLimit: number
 }
 
 /** The headline numbers on the dashboard home page. */
 export async function getWorkspaceStats(
   organizationId: string
 ): Promise<WorkspaceStats> {
-  const [documentsIndexed, documentsPending, questionsThisMonth, planId] =
+  const [documentsIndexed, documentsPending, questionsThisMonth] =
     await Promise.all([
       db.document.count({ where: { organizationId, status: "READY" } }),
       db.document.count({
         where: { organizationId, status: { not: "READY" } },
       }),
       countQuestionsThisMonth(organizationId),
-      getWorkspacePlan(organizationId),
     ])
 
-  return {
-    documentsIndexed,
-    documentsPending,
-    questionsThisMonth,
-    planId,
-    questionLimit: planQuestionLimit(planId),
-  }
+  return { documentsIndexed, documentsPending, questionsThisMonth }
 }
 
 /** The newest uploads, for the home page's "Recent documents" list. */

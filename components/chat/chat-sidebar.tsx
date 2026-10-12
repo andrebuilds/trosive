@@ -5,16 +5,15 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   ChevronsUpDownIcon,
-  CreditCardIcon,
   HouseIcon,
   PlusIcon,
   Trash2Icon,
-  UserIcon,
 } from "lucide-react"
 
 import type { SessionUser } from "@/lib/auth-client"
+import type { ApiKeyStatus } from "@/lib/byok"
 import { chatRoute, CHATS_ROUTE, type ChatSummary } from "@/lib/chat"
-import { APP_ROOT, BILLING_ROUTE, SETTINGS_ROUTE } from "@/lib/dashboard-nav"
+import { accountMenuNav, APP_ROOT } from "@/lib/dashboard-nav"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,30 +41,27 @@ import {
 } from "@/components/ui/sidebar"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
+import { ApiKeyLine } from "@/components/api-key/api-key-line"
 import { UserAvatar } from "@/components/auth/user-avatar"
-import { TrosiveLogo } from "@/components/brand/trosive-logo"
+import { TrosiveLogo, TrosiveMark } from "@/components/brand/trosive-logo"
 import { AccountMenu } from "@/components/dashboard/account-menu"
-
-/** Links above "Sign out" in the footer menu. */
-const accountMenuItems = [
-  { href: SETTINGS_ROUTE, label: "Account", icon: UserIcon },
-  { href: BILLING_ROUTE, label: "Billing", icon: CreditCardIcon },
-]
 
 /**
  * Chat chrome — `ui-design/dashboard/light/chat-sidebar.png`. The product nav
  * gives way to chat history here, so the only way back out is "Home".
+ * Collapsing it leaves an icon rail; chat titles have no icon, so the history
+ * waits for the sidebar to open again.
  */
 function ChatSidebar({
   user,
   chats,
-  planLabel,
+  keyStatus,
 }: {
   user: SessionUser
   /** This workspace's conversations, newest first. */
   chats: ChatSummary[]
-  /** "Free plan" / "Pro plan" — the workspace's entitlement, from the layout. */
-  planLabel: string
+  /** The workspace's Anthropic key, from the layout. Never the key itself. */
+  keyStatus: ApiKeyStatus
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -129,30 +125,39 @@ function ChatSidebar({
   }
 
   return (
-    <Sidebar>
-      <SidebarHeader className="gap-4 px-3 pt-4 pb-2">
-        <Link href={APP_ROOT} aria-label="Trosive home" className="px-1">
-          <TrosiveLogo />
+    <Sidebar collapsible="icon">
+      {/* Collapsed to the icon rail, the wordmark gives way to the mark and
+          "New chat" to its plus. */}
+      <SidebarHeader className="gap-4 px-3 pt-4 pb-2 group-data-[collapsible=icon]:px-2">
+        <Link
+          href={APP_ROOT}
+          aria-label="Trosive home"
+          className="px-1 group-data-[collapsible=icon]:px-0"
+        >
+          <TrosiveLogo className="group-data-[collapsible=icon]:hidden" />
+          <TrosiveMark className="hidden group-data-[collapsible=icon]:block" />
         </Link>
 
         <Button
           size="lg"
-          className="w-full cursor-pointer"
+          aria-label="New chat"
+          className="w-full cursor-pointer group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
           render={<Link href={CHATS_ROUTE} />}
           nativeButton={false}
         >
           <PlusIcon />
-          New chat
+          <span className="group-data-[collapsible=icon]:hidden">New chat</span>
         </Button>
       </SidebarHeader>
 
       <SidebarContent className="gap-1">
-        <SidebarGroup className="px-3 py-0">
+        <SidebarGroup className="px-3 py-0 group-data-[collapsible=icon]:px-2">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={<Link href={APP_ROOT} />}
+                  tooltip="Home"
                   className="h-9 gap-3 px-2.5 text-muted-foreground"
                 >
                   <HouseIcon />
@@ -163,7 +168,7 @@ function ChatSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="gap-1 px-3 py-0">
+        <SidebarGroup className="gap-1 px-3 py-0 group-data-[collapsible=icon]:hidden">
           <SidebarGroupLabel className="mt-3 px-2 text-[0.6875rem] font-bold tracking-[0.08em] text-muted-foreground uppercase">
             Recent chats
           </SidebarGroupLabel>
@@ -210,7 +215,7 @@ function ChatSidebar({
           <SidebarMenuItem>
             <AccountMenu
               user={user}
-              items={accountMenuItems}
+              items={accountMenuNav}
               side="top"
               align="start"
               className="w-(--sidebar-width)"
@@ -222,16 +227,17 @@ function ChatSidebar({
                 />
               }
             >
-              <UserAvatar user={user} className="size-9" />
-              <div className="flex min-w-0 flex-1 flex-col text-left">
+              <UserAvatar
+                user={user}
+                className="size-9 group-data-[collapsible=icon]:size-8"
+              />
+              <div className="flex min-w-0 flex-1 flex-col text-left group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-semibold">
                   {user.name || user.email}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {planLabel}
-                </span>
+                <ApiKeyLine status={keyStatus} />
               </div>
-              <ChevronsUpDownIcon className="text-muted-foreground" />
+              <ChevronsUpDownIcon className="text-muted-foreground group-data-[collapsible=icon]:hidden" />
             </AccountMenu>
           </SidebarMenuItem>
         </SidebarMenu>

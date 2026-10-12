@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { getWorkspaceKeyStatus } from "@/lib/api-keys"
 import { getChat } from "@/lib/chat-store"
 import { requireOrganization, requireSession } from "@/lib/session"
 import { ChatConversation } from "@/components/chat/chat-conversation"
@@ -25,7 +26,10 @@ export default async function ChatPage({ params }: ChatPageProps) {
   const { chatId } = await params
   const session = await requireSession()
   const organization = await requireOrganization()
-  const chat = await getChat(chatId, organization.id)
+  const [chat, keyStatus] = await Promise.all([
+    getChat(chatId, organization.id),
+    getWorkspaceKeyStatus(organization.id, session.user.id),
+  ])
 
   // `getChat` scopes by workspace, so someone else's chat id is a 404 here
   // rather than a leak.
@@ -40,7 +44,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
         title={chat.title}
         documentCount={chat.documents.length}
       />
-      <ChatConversation chat={chat} />
+      <ChatConversation chat={chat} keyStatus={keyStatus} />
     </>
   )
 }

@@ -21,7 +21,7 @@ function FooterCta() {
 
           <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
             Upload your first documents and get cited answers in minutes. Free
-            for 5 files — no card required.
+            and unlimited, on your own Anthropic API key.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">

@@ -15,13 +15,18 @@ export const APP_ROOT = "/app"
 /** The one route inside `/app` a user without a workspace can reach. */
 export const ONBOARDING_ROUTE = `${APP_ROOT}/onboarding`
 
+/** Onboarding's second step: the workspace exists, now its Anthropic key. */
+export const ONBOARDING_API_KEY_ROUTE = `${ONBOARDING_ROUTE}/api-key`
+
 /**
  * Settings is one screen with three tabs, but each tab is its own route — the
  * tab strip is navigation, so it survives a reload and can be linked to.
  */
 export const SETTINGS_ROUTE = `${APP_ROOT}/settings`
-export const BILLING_ROUTE = `${SETTINGS_ROUTE}/billing`
+export const API_KEY_ROUTE = `${SETTINGS_ROUTE}/api-key`
 export const DANGER_ZONE_ROUTE = `${SETTINGS_ROUTE}/danger-zone`
+
+export const USAGE_ROUTE = `${APP_ROOT}/usage`
 
 /**
  * The admin console's routes live here rather than in `lib/admin.ts` because
@@ -88,29 +93,18 @@ export const dashboardNav: DashboardNavGroup[] = [
       { href: `${APP_ROOT}/search`, label: "Search", icon: SearchIcon },
     ],
   },
+  // Settings and Usage live in the account menu instead (`accountMenuNav`),
+  // so this group is the admin console's alone and non-admins don't see it.
   {
     title: "Manage",
     items: [
-      { href: `${APP_ROOT}/usage`, label: "Usage", icon: ChartLineIcon },
-      {
-        href: SETTINGS_ROUTE,
-        label: "Settings",
-        icon: SettingsIcon,
-        // "Danger zone" is a tab but not a nav entry — it isn't somewhere you
-        // navigate to on purpose.
-        items: [
-          { href: SETTINGS_ROUTE, label: "Account" },
-          { href: BILLING_ROUTE, label: "Billing" },
-        ],
-      },
       {
         href: ADMIN_ROUTE,
         label: "Admin",
         icon: ShieldIcon,
         tag: "Owner",
         adminOnly: true,
-        // Same treatment as Settings: the sections appear underneath while
-        // you're inside the console.
+        // The sections appear underneath while you're inside the console.
         items: [
           { href: ADMIN_ROUTE, label: "Overview" },
           { href: ADMIN_USERS_ROUTE, label: "Users" },
@@ -122,7 +116,20 @@ export const dashboardNav: DashboardNavGroup[] = [
   },
 ]
 
-const navItems = dashboardNav.flatMap((group) => group.items)
+/**
+ * Links above "Sign out" in the account menu, in both sidebars. Settings'
+ * own tabs (Account, API key, Danger zone) are a click away from there.
+ */
+export const accountMenuNav = [
+  { href: SETTINGS_ROUTE, label: "Settings", icon: SettingsIcon },
+  { href: USAGE_ROUTE, label: "Usage", icon: ChartLineIcon },
+]
+
+/** Every route with a header title: the sidebar's and the account menu's. */
+const navItems = [
+  ...dashboardNav.flatMap((group) => group.items),
+  ...accountMenuNav,
+]
 
 /**
  * The nav as this user should see it. Admin-only entries are dropped rather
@@ -142,7 +149,7 @@ export function visibleDashboardNav(isAdmin: boolean) {
 
 /** True for the item's own route and anything nested under it. */
 export function isDashboardNavItemActive(
-  item: DashboardNavItem,
+  item: Pick<DashboardNavItem, "href">,
   pathname: string
 ) {
   return item.href === APP_ROOT
@@ -172,6 +179,5 @@ export function workspaceInitials(name: string) {
     .join("")
 }
 
-// The plan label under the user's name is no longer a constant — it's the
-// workspace's entitlement. `planLabel` in `lib/billing.ts` formats it, and each
-// sidebar takes it as a prop from its layout.
+// Under the user's name the sidebars show the workspace's API key status
+// rather than a plan: there are no plans. See `apiKeyLabel` in `lib/byok.ts`.

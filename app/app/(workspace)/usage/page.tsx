@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { getUsage } from "@/lib/chat-store"
 import { requireOrganization } from "@/lib/session"
 import { formatDuration, formatPeriod, USAGE_CHART_DAYS } from "@/lib/usage"
-import { UsageAllowance } from "@/components/dashboard/usage/usage-allowance"
+import { UsageQuestions } from "@/components/dashboard/usage/usage-questions"
 import { UsageChart } from "@/components/dashboard/usage/usage-chart"
 import { UsageDocuments } from "@/components/dashboard/usage/usage-documents"
 
@@ -72,20 +72,15 @@ export default async function UsagePage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-10">
       <h2 className="font-heading text-3xl font-bold tracking-tight">Usage</h2>
-      {/* "Billing cycle" in the reference, but nothing bills yet. This is the
-          window the question allowance is actually counted over. */}
+      {/* "Billing cycle" in the reference, but Trosive bills nothing: answers
+          run on the workspace's own key, so this is just the month shown. */}
       <p className="mt-2 text-muted-foreground">
-        Allowance period {formatPeriod(usage.period)} ·{" "}
-        {usage.period.resetsInDays === 0
-          ? "resets today."
-          : `resets in ${usage.period.resetsInDays} ${usage.period.resetsInDays === 1 ? "day" : "days"}.`}
+        {formatPeriod(usage.period)} · No limits. Answers are billed by
+        Anthropic, to your own API key.
       </p>
 
       <div className="mt-6 flex flex-col gap-4">
-        <UsageAllowance
-          questions={usage.questions}
-          limit={usage.questionLimit}
-        />
+        <UsageQuestions questions={usage.questions} />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <StatTile

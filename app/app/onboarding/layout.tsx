@@ -1,23 +1,16 @@
-import { redirectIfOnboarded, requireSession } from "@/lib/session"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-
 /**
- * Onboarding chrome — the header without the sidebar or search, since there is
- * no workspace to navigate or search yet.
- * `ui-design/dashboard/light/dashboard-organisation.png`.
+ * Onboarding chrome: none. No header, sidebar or search, since there is no
+ * workspace to navigate or search yet; each step carries its own mark.
+ * `/app`'s layout has already required a session.
+ *
+ * Two steps: name the workspace, then bring its Anthropic key. Each page
+ * guards itself, because the second step needs the workspace the first one
+ * refuses to show once it exists.
  */
-export default async function OnboardingLayout({
+export default function OnboardingLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const session = await requireSession()
-  await redirectIfOnboarded()
-
-  return (
-    <div className="flex min-h-svh flex-col">
-      <DashboardHeader user={session.user} title="Welcome" showSearch={false} />
-      <main className="flex flex-1 flex-col">{children}</main>
-    </div>
-  )
+  return <main className="flex min-h-svh flex-col">{children}</main>
 }

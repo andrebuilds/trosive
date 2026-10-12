@@ -1,10 +1,14 @@
 import { createHash } from "node:crypto"
 import { Resend } from "resend"
 
+import { LOGO_CONTENT_ID, LOGO_PNG_BASE64 } from "@/lib/email/logo"
 import {
+  apiKeyInvalidEmail,
   changeEmailVerificationEmail,
+  magicLinkEmail,
   passwordResetEmail,
   verificationEmail,
+  welcomeEmail,
   type EmailContent,
 } from "@/lib/email/templates"
 
@@ -80,6 +84,15 @@ async function send({ to, content, idempotencyKey }: SendArgs) {
       subject: content.subject,
       html: content.html,
       text: content.text,
+      // The logo beside the name in every layout's header, see `lib/email/logo`.
+      attachments: [
+        {
+          content: LOGO_PNG_BASE64,
+          filename: "trosive.png",
+          contentType: "image/png",
+          contentId: LOGO_CONTENT_ID,
+        },
+      ],
       ...(EMAIL_REPLY_TO ? { replyTo: EMAIL_REPLY_TO } : {}),
     },
     { idempotencyKey }
@@ -92,6 +105,54 @@ async function send({ to, content, idempotencyKey }: SendArgs) {
   }
 
   return data?.id
+}
+
+/** Sign-in and sign-up both go through this: there are no passwords. */
+export function sendMagicLinkEmail(
+  to: string,
+  url: string,
+  isNewUser: boolean
+) {
+  return send({
+    to,
+    content: magicLinkEmail(url, isNewUser),
+    idempotencyKey: idempotencyKeyFor("magic-link", url),
+  })
+}
+
+/** `url` is where the button goes: the app, which starts onboarding. */
+export function sendWelcomeEmail(
+  to: string,
+  name: string,
+  url: string,
+  userId: string
+) {
+  return send({
+    to,
+    content: welcomeEmail(name, url),
+    // Once per account, however many times the hook fires.
+    idempotencyKey: `welcome/${userId}`,
+  })
+}
+
+/**
+ * `keyId` and the day make the idempotency key: one mail per key per day, so
+ * a team asking question after question into a dead key gets told once.
+ */
+export function sendApiKeyInvalidEmail(
+  to: string,
+  workspaceName: string,
+  hint: string,
+  url: string,
+  keyId: string
+) {
+  const day = new Date().toISOString().slice(0, 10)
+
+  return send({
+    to,
+    content: apiKeyInvalidEmail(workspaceName, hint, url),
+    idempotencyKey: `api-key-invalid/${keyId}/${to}/${day}`,
+  })
 }
 
 export function sendVerificationEmail(to: string, url: string) {

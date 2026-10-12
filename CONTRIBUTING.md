@@ -16,14 +16,13 @@ By participating you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 ## Development setup
 
 Follow [Getting started](README.md#getting-started) in the README. A free
-[Neon](https://neon.tech) database is enough for local work; Resend, Stripe and
-social sign-in are all optional.
+[Neon](https://neon.tech) database is enough for local work; Resend and social
+sign-in are optional. To try chat, add your own Anthropic API key in the app
+(Settings, API key) or set `ANTHROPIC_API_KEY` locally.
 
-Read [`AGENTS.md`](AGENTS.md) before changing anything non-trivial. It maps the
-codebase and explains the rules the code relies on — for example that client
-components never import `lib/auth.ts`, that every admin page calls
-`requireAdmin()`, and that a paid plan is only ever granted from Stripe's own
-data.
+A few rules the code relies on: client components never import `lib/auth.ts`,
+every admin page calls `requireAdmin()`, and a workspace's API key is never
+sent back to the browser or logged.
 
 ## Making a change
 

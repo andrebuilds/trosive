@@ -2,20 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  ChevronsUpDownIcon,
-  CreditCardIcon,
-  PlusIcon,
-  UserIcon,
-} from "lucide-react"
+import { ChevronsUpDownIcon, PlusIcon } from "lucide-react"
 
 import type { SessionUser } from "@/lib/auth-client"
+import type { ApiKeyStatus } from "@/lib/byok"
+import { CHATS_ROUTE } from "@/lib/chat"
 import {
+  accountMenuNav,
   APP_ROOT,
-  BILLING_ROUTE,
   visibleDashboardNav,
   isDashboardNavItemActive,
-  SETTINGS_ROUTE,
   workspaceInitials,
   type DashboardNavCounts,
 } from "@/lib/dashboard-nav"
@@ -38,22 +34,20 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { ApiKeyLine } from "@/components/api-key/api-key-line"
 import { UserAvatar } from "@/components/auth/user-avatar"
-import { TrosiveLogo } from "@/components/brand/trosive-logo"
+import { TrosiveLogo, TrosiveMark } from "@/components/brand/trosive-logo"
 import { AccountMenu } from "@/components/dashboard/account-menu"
 
-/** Links above "Sign out" in the footer menu. */
-const accountMenuItems = [
-  { href: SETTINGS_ROUTE, label: "Account", icon: UserIcon },
-  { href: BILLING_ROUTE, label: "Billing", icon: CreditCardIcon },
-]
-
-/** Product navigation — `ui-design/dashboard/light/dashboard-sidebar.png`. */
+/**
+ * Product navigation — `ui-design/dashboard/light/dashboard-sidebar.png`.
+ * Collapsing it leaves an icon rail rather than hiding it outright.
+ */
 function DashboardSidebar({
   user,
   workspaceName,
   counts,
-  planLabel,
+  keyStatus,
   isAdmin,
 }: {
   user: SessionUser
@@ -61,8 +55,8 @@ function DashboardSidebar({
   workspaceName: string
   /** Live chat and document totals for this workspace. */
   counts: DashboardNavCounts
-  /** "Free plan" / "Pro plan" — the workspace's entitlement, from the layout. */
-  planLabel: string
+  /** The workspace's Anthropic key, shown under the user's name. */
+  keyStatus: ApiKeyStatus
   /** Admins get the Admin entry; nobody else is shown it exists. */
   isAdmin: boolean
 }) {
@@ -70,32 +64,49 @@ function DashboardSidebar({
   const nav = visibleDashboardNav(isAdmin)
 
   return (
-    <Sidebar>
-      <SidebarHeader className="gap-4 px-3 pt-4 pb-2">
-        <Link href={APP_ROOT} aria-label="Trosive home" className="px-1">
-          <TrosiveLogo />
+    <Sidebar collapsible="icon">
+      {/* Collapsed to the icon rail, the wordmark gives way to the mark and
+          "New chat" to its plus. */}
+      <SidebarHeader className="gap-4 px-3 pt-4 pb-2 group-data-[collapsible=icon]:px-2">
+        <Link
+          href={APP_ROOT}
+          aria-label="Trosive home"
+          className="px-1 group-data-[collapsible=icon]:px-0"
+        >
+          <TrosiveLogo className="group-data-[collapsible=icon]:hidden" />
+          <TrosiveMark className="hidden group-data-[collapsible=icon]:block" />
         </Link>
 
-        <Link href="/app/chats">
-          <Button size="lg" className="w-full cursor-pointer">
-            <PlusIcon />
-            New chat
-          </Button>
-        </Link>
+        <Button
+          size="lg"
+          aria-label="New chat"
+          className="w-full cursor-pointer group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+          render={<Link href={CHATS_ROUTE} />}
+          nativeButton={false}
+        >
+          <PlusIcon />
+          <span className="group-data-[collapsible=icon]:hidden">New chat</span>
+        </Button>
       </SidebarHeader>
 
       <SidebarContent className="gap-1">
-        <div className="flex items-center gap-3 px-5 py-3">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md border text-[0.625rem] font-semibold tracking-wide">
+        <div className="flex items-center gap-3 px-5 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <span
+            title={workspaceName}
+            className="flex size-7 shrink-0 items-center justify-center rounded-md border text-[0.625rem] font-semibold tracking-wide"
+          >
             {workspaceInitials(workspaceName)}
           </span>
-          <span className="truncate text-sm font-semibold">
+          <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
             {workspaceName}
           </span>
         </div>
 
         {nav.map((group, index) => (
-          <SidebarGroup key={group.title ?? index} className="gap-1 px-3 py-0">
+          <SidebarGroup
+            key={group.title ?? index}
+            className="gap-1 px-3 py-0 group-data-[collapsible=icon]:px-2"
+          >
             {group.title && (
               <SidebarGroupLabel className="mt-3 px-2 text-[0.6875rem] font-bold tracking-[0.08em] text-muted-foreground uppercase">
                 {group.title}
@@ -115,6 +126,7 @@ function DashboardSidebar({
                       <SidebarMenuButton
                         render={<Link href={item.href} />}
                         isActive={isActive}
+                        tooltip={item.label}
                         className="h-9 gap-3 px-2.5 text-muted-foreground data-active:text-sidebar-accent-foreground"
                       >
                         <item.icon />
@@ -164,7 +176,7 @@ function DashboardSidebar({
           <SidebarMenuItem>
             <AccountMenu
               user={user}
-              items={accountMenuItems}
+              items={accountMenuNav}
               side="top"
               align="start"
               className="w-(--sidebar-width)"
@@ -176,16 +188,17 @@ function DashboardSidebar({
                 />
               }
             >
-              <UserAvatar user={user} className="size-9" />
-              <div className="flex min-w-0 flex-1 flex-col text-left">
+              <UserAvatar
+                user={user}
+                className="size-9 group-data-[collapsible=icon]:size-8"
+              />
+              <div className="flex min-w-0 flex-1 flex-col text-left group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-semibold">
                   {user.name || user.email}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {planLabel}
-                </span>
+                <ApiKeyLine status={keyStatus} />
               </div>
-              <ChevronsUpDownIcon className="text-muted-foreground" />
+              <ChevronsUpDownIcon className="text-muted-foreground group-data-[collapsible=icon]:hidden" />
             </AccountMenu>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -15,7 +15,7 @@ export default function SettingsLayout({
         Settings
       </h2>
       <p className="mt-2 text-muted-foreground">
-        Manage your profile, plan, and account.
+        Manage your profile, API key, and account.
       </p>
 
       <div className="mt-8">

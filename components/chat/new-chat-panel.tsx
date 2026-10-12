@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { LibraryIcon } from "lucide-react"
 
+import { canAsk, type ApiKeyStatus } from "@/lib/byok"
 import {
   chatRoute,
   MAX_DOCUMENTS_PER_CHAT,
@@ -20,6 +21,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Marker, MarkerContent } from "@/components/ui/marker"
+import { ApiKeyBanner } from "@/components/api-key/api-key-banner"
 import { TrosiveMark } from "@/components/brand/trosive-logo"
 import { ChatComposer } from "@/components/chat/chat-composer"
 import { DocumentDropzone } from "@/components/chat/document-dropzone"
@@ -32,8 +34,17 @@ import { LibraryPickerDialog } from "@/components/chat/library-picker-dialog"
  * created and the developer is taken to the thread, where the brief analysis
  * streams in. That's why the composer here stays disabled — there's nothing to
  * ask until Trosive has something to read.
+ *
+ * Without an API key documents still go in and the chat still opens; its
+ * brief analysis waits there until a key is added.
  */
-function NewChatPanel({ documents }: { documents: LibraryDocumentView[] }) {
+function NewChatPanel({
+  documents,
+  keyStatus,
+}: {
+  documents: LibraryDocumentView[]
+  keyStatus: ApiKeyStatus
+}) {
   const router = useRouter()
   const [isLibraryOpen, setIsLibraryOpen] = React.useState(false)
   const [busy, setBusy] = React.useState<string | null>(null)
@@ -153,6 +164,9 @@ function NewChatPanel({ documents }: { documents: LibraryDocumentView[] }) {
 
       <div className="shrink-0 px-6 pb-6">
         <div className="mx-auto w-full max-w-3xl">
+          {!canAsk(keyStatus) && (
+            <ApiKeyBanner status={keyStatus} variant="card" className="mb-3" />
+          )}
           <ChatComposer
             disabled
             placeholder="Add a document to ask your first question…"
