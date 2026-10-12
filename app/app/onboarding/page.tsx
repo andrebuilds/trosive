@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
-import { redirectIfOnboarded } from "@/lib/session"
+import { openInvitationsFor } from "@/lib/invitations"
+import { redirectIfOnboarded, requireSession } from "@/lib/session"
 import { CreateOrganizationForm } from "@/components/onboarding/create-organization-form"
 
 export const metadata: Metadata = {
@@ -11,5 +12,8 @@ export const metadata: Metadata = {
 export default async function OnboardingPage() {
   await redirectIfOnboarded()
 
-  return <CreateOrganizationForm />
+  const session = await requireSession()
+  const invitations = await openInvitationsFor(session.user.email)
+
+  return <CreateOrganizationForm invitations={invitations} />
 }

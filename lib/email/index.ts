@@ -5,7 +5,10 @@ import { LOGO_CONTENT_ID, LOGO_PNG_BASE64 } from "@/lib/email/logo"
 import {
   apiKeyInvalidEmail,
   changeEmailVerificationEmail,
+  invitationEmail,
+  joinedWorkspaceEmail,
   magicLinkEmail,
+  memberJoinedEmail,
   passwordResetEmail,
   verificationEmail,
   welcomeEmail,
@@ -152,6 +155,49 @@ export function sendApiKeyInvalidEmail(
     to,
     content: apiKeyInvalidEmail(workspaceName, hint, url),
     idempotencyKey: `api-key-invalid/${keyId}/${to}/${day}`,
+  })
+}
+
+/**
+ * "Resend" keeps the invitation's id and only moves its expiry, so the expiry
+ * is part of the key: a resend is a new mail, a retry of the same one isn't.
+ */
+export function sendInvitationEmail(
+  to: string,
+  invitationId: string,
+  expiresAt: Date,
+  details: Parameters<typeof invitationEmail>[0]
+) {
+  return send({
+    to,
+    content: invitationEmail(details),
+    idempotencyKey: `invitation/${invitationId}/${expiresAt.getTime()}`,
+  })
+}
+
+/** To whoever sent the invitation, once per membership. */
+export function sendMemberJoinedEmail(
+  to: string,
+  memberId: string,
+  details: Parameters<typeof memberJoinedEmail>[0]
+) {
+  return send({
+    to,
+    content: memberJoinedEmail(details),
+    idempotencyKey: `member-joined/${memberId}/inviter`,
+  })
+}
+
+/** To the new member, once per membership. */
+export function sendJoinedWorkspaceEmail(
+  to: string,
+  memberId: string,
+  details: Parameters<typeof joinedWorkspaceEmail>[0]
+) {
+  return send({
+    to,
+    content: joinedWorkspaceEmail(details),
+    idempotencyKey: `member-joined/${memberId}/member`,
   })
 }
 

@@ -139,6 +139,8 @@ export type ChatMessageView = {
 export type ChatSummary = {
   id: string
   title: string
+  /** Who started it: members may only delete their own. */
+  userId: string
   /** ISO timestamp of the last turn, for "2h" style ages. */
   updatedAt: string
   /** Opening of the latest answer, for the home page's two-line rows. */

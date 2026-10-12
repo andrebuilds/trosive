@@ -1,4 +1,10 @@
-import { getOrganizations, getServerSession, isAdminUser } from "@/lib/session"
+import {
+  activeWorkspace,
+  getServerSession,
+  getWorkspaces,
+  isAdminUser,
+} from "@/lib/session"
+import type { WorkspaceRole } from "@/lib/workspace-roles"
 
 /**
  * The workspace guard for route handlers.
@@ -10,6 +16,8 @@ import { getOrganizations, getServerSession, isAdminUser } from "@/lib/session"
 export type ApiContext = {
   userId: string
   organizationId: string
+  /** The caller's role in that workspace, for deletes and Settings. */
+  role: WorkspaceRole
 }
 
 type ApiGuard =
@@ -25,11 +33,10 @@ export async function requireApiContext(): Promise<ApiGuard> {
     }
   }
 
-  const organizations = await getOrganizations()
-  const activeId = session.session.activeOrganizationId
-  const organization =
-    organizations.find((candidate) => candidate.id === activeId) ??
-    organizations[0]
+  const organization = activeWorkspace(
+    await getWorkspaces(),
+    session.session.activeOrganizationId
+  )
 
   if (!organization) {
     return {
@@ -43,7 +50,11 @@ export async function requireApiContext(): Promise<ApiGuard> {
 
   return {
     ok: true,
-    context: { userId: session.user.id, organizationId: organization.id },
+    context: {
+      userId: session.user.id,
+      organizationId: organization.id,
+      role: organization.role,
+    },
   }
 }
 

@@ -5,6 +5,16 @@ import { redirect } from "next/navigation"
 import { isAdminRole } from "@/lib/admin"
 import { auth, bootstrapAdminIds } from "@/lib/auth"
 import { APP_ROOT, ONBOARDING_ROUTE } from "@/lib/dashboard-nav"
+import { db } from "@/lib/db"
+import { workspaceRole, type WorkspaceRole } from "@/lib/workspace-roles"
+
+/** A workspace as the signed-in user sees it: theirs to work in, in a role. */
+export type Workspace = {
+  id: string
+  name: string
+  slug: string
+  role: WorkspaceRole
+}
 
 /**
  * The session for the current request. `cache` dedupes it, so a layout and the
@@ -60,37 +70,71 @@ export async function requireAdmin() {
   return session
 }
 
-/** Every organization the signed-in user belongs to, deduped per request. */
-export const getOrganizations = cache(async () => {
-  return auth.api.listOrganizations({ headers: await headers() })
+/**
+ * Every workspace the signed-in user belongs to, with their role in each,
+ * oldest membership first. Deduped per request.
+ *
+ * Read from `member` rather than `listOrganizations`, which leaves the role
+ * out, and the role decides half of what the sidebar and Settings show.
+ */
+export const getWorkspaces = cache(async (): Promise<Workspace[]> => {
+  const session = await getServerSession()
+
+  if (!session) return []
+
+  const memberships = await db.member.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+    select: {
+      role: true,
+      organization: { select: { id: true, name: true, slug: true } },
+    },
+  })
+
+  return memberships.map(({ role, organization }) => ({
+    ...organization,
+    role: workspaceRole(role),
+  }))
 })
 
 /**
- * The workspace the user is working in. A signed-in user without one has not
- * finished onboarding, so there is nothing to show them but the form.
+ * The one being worked in: the session's active workspace, or the oldest one
+ * when that's unset or the user was removed from it.
+ */
+export function activeWorkspace(
+  workspaces: Workspace[],
+  activeId: string | null | undefined
+) {
+  return (
+    workspaces.find((workspace) => workspace.id === activeId) ?? workspaces[0]
+  )
+}
+
+/**
+ * The workspace the user is working in, with their role in it. A signed-in
+ * user without one has not finished onboarding, so there is nothing to show
+ * them but the form.
  */
 export async function requireOrganization() {
   const session = await requireSession()
-  const organizations = await getOrganizations()
+  const workspace = activeWorkspace(
+    await getWorkspaces(),
+    session.session.activeOrganizationId
+  )
 
-  if (organizations.length === 0) {
+  if (!workspace) {
     redirect(ONBOARDING_ROUTE)
   }
 
-  const activeId = session.session.activeOrganizationId
-
-  return (
-    organizations.find((organization) => organization.id === activeId) ??
-    organizations[0]
-  )
+  return workspace
 }
 
 /** The reverse guard: onboarding is pointless once a workspace exists. */
 export async function redirectIfOnboarded() {
   await requireSession()
-  const organizations = await getOrganizations()
+  const workspaces = await getWorkspaces()
 
-  if (organizations.length > 0) {
+  if (workspaces.length > 0) {
     redirect(APP_ROOT)
   }
 }

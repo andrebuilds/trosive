@@ -23,6 +23,23 @@ const MESSAGES: Record<string, string> = {
   // Deleting an account without a password to confirm it needs a session
   // minted in the last hour — signing in again is the way back.
   SESSION_EXPIRED: "Sign out and sign back in, then try that again.",
+  // Workspaces, members and invitations.
+  USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION:
+    "That person is already in this workspace.",
+  YOU_CANNOT_LEAVE_THE_ORGANIZATION_AS_THE_ONLY_OWNER:
+    "Make someone else the owner first.",
+  YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION:
+    "Only owners and admins can invite people.",
+  YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE:
+    "You can't invite someone with that role.",
+  YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER:
+    "You can't change this member's role.",
+  YOU_ARE_NOT_ALLOWED_TO_DELETE_THIS_MEMBER:
+    "You can't remove this member.",
+  YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION:
+    "This invitation was sent to a different email address.",
+  INVITATION_NOT_FOUND: "This invitation has expired or was withdrawn.",
+  ORGANIZATION_MEMBERSHIP_LIMIT_REACHED: "This workspace is full.",
 }
 
 export function authErrorMessage(error: AuthError, fallback: string) {

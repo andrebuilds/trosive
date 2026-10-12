@@ -1,32 +1,32 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowRightIcon } from "lucide-react"
+import { ArrowRightIcon, UsersIcon } from "lucide-react"
 
-import { organization } from "@/lib/auth-client"
-import { ONBOARDING_API_KEY_ROUTE } from "@/lib/dashboard-nav"
-import { organizationSlug, uniqueSlugSuffix } from "@/lib/organization"
+import { invitationRoute, ONBOARDING_API_KEY_ROUTE } from "@/lib/dashboard-nav"
+import type { InvitationSummary } from "@/lib/invitations"
+import { createWorkspace } from "@/lib/organization-client"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { authErrorMessage } from "@/components/auth/auth-errors"
 import { TrosiveMark } from "@/components/brand/trosive-logo"
 import { OrganizationSetupLoading } from "@/components/onboarding/organization-setup-loading"
-
-/** Slugs are unique, and two people may well name their workspace the same. */
-const SLUG_TAKEN = new Set([
-  "ORGANIZATION_ALREADY_EXISTS",
-  "ORGANIZATION_SLUG_ALREADY_TAKEN",
-])
-const SLUG_ATTEMPTS = 3
 
 /**
  * The first thing a new user sees — `ui-design/dashboard/light/
  * dashboard-organisation.png`. Creating the organization also makes it the
  * active one, which is what `/app` reads to fill the sidebar.
+ *
+ * Someone who signed up from an invitation, or was invited later, sees it
+ * above the form, so joining doesn't mean creating a workspace first.
  */
-function CreateOrganizationForm() {
+function CreateOrganizationForm({
+  invitations = [],
+}: {
+  invitations?: InvitationSummary[]
+}) {
   const router = useRouter()
   const [name, setName] = React.useState("")
   const [pending, setPending] = React.useState(false)
@@ -41,34 +41,19 @@ function CreateOrganizationForm() {
     setPending(true)
     setError(null)
 
-    const base = organizationSlug(workspace)
+    const result = await createWorkspace(workspace)
 
-    for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
-      const { error: createError } = await organization.create({
-        name: workspace,
-        slug: attempt === 0 ? base : `${base}-${uniqueSlugSuffix()}`,
-      })
-
-      if (!createError) {
-        // On to step two, the Anthropic key. Stay on the loading state through
-        // the navigation: the workspace is ready, and flashing the empty form
-        // back would read as a failure.
-        router.replace(ONBOARDING_API_KEY_ROUTE)
-        router.refresh()
-        return
-      }
-
-      if (!createError.code || !SLUG_TAKEN.has(createError.code)) {
-        setPending(false)
-        setError(
-          authErrorMessage(createError, "Could not create your workspace.")
-        )
-        return
-      }
+    if (!result.ok) {
+      setPending(false)
+      setError(result.error)
+      return
     }
 
-    setPending(false)
-    setError("That name is taken. Try a different one.")
+    // On to step two, the Anthropic key. Stay on the loading state through
+    // the navigation: the workspace is ready, and flashing the empty form back
+    // would read as a failure.
+    router.replace(ONBOARDING_API_KEY_ROUTE)
+    router.refresh()
   }
 
   if (pending) {
@@ -86,6 +71,34 @@ function CreateOrganizationForm() {
         This is your workspace for documents, chats, and teammates. You can
         change it later in Settings.
       </p>
+
+      {invitations.length > 0 && (
+        <ul className="mt-8 flex flex-col gap-2">
+          {invitations.map((invitation) => (
+            <li key={invitation.id}>
+              <Link
+                href={invitationRoute(invitation.id)}
+                className="flex items-center gap-3 rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 transition-colors hover:bg-brand/10"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand/10 text-brand">
+                  <UsersIcon className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    You have an invitation to {invitation.workspaceName}
+                  </span>
+                  <span className="block truncate text-sm text-muted-foreground">
+                    From {invitation.inviterName}, as{" "}
+                    {invitation.roleLabel === "Admin" ? "an" : "a"}{" "}
+                    {invitation.roleLabel}
+                  </span>
+                </span>
+                <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
         {error && (

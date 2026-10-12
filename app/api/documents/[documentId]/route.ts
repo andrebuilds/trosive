@@ -40,7 +40,10 @@ export async function GET(
   })
 }
 
-/** Removes a document from the library — the library row's overflow menu. */
+/**
+ * Removes a document from the library — the library row's overflow menu.
+ * Members may only remove what they uploaded.
+ */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ documentId: string }> }
@@ -50,10 +53,17 @@ export async function DELETE(
 
   const { documentId } = await params
 
-  const deleted = await deleteDocument(documentId, guard.context.organizationId)
+  const result = await deleteDocument(documentId, guard.context)
 
-  if (!deleted) {
+  if (result === "missing") {
     return NextResponse.json({ error: "Document not found." }, { status: 404 })
+  }
+
+  if (result === "forbidden") {
+    return NextResponse.json(
+      { error: "Only whoever uploaded this document, or an admin, can delete it." },
+      { status: 403 }
+    )
   }
 
   return NextResponse.json({ ok: true })

@@ -9,8 +9,9 @@ import {
   type LibraryStatusFilter,
 } from "@/lib/library"
 import { rangeLabel } from "@/lib/pagination"
-import { requireOrganization } from "@/lib/session"
+import { requireOrganization, requireSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
+import { canDeleteItem } from "@/lib/workspace-roles"
 import { Badge } from "@/components/ui/badge"
 import { TableBody, TableCell, TableRow } from "@/components/ui/table"
 import { Pager } from "@/components/dashboard/pager"
@@ -54,7 +55,10 @@ async function LibraryTable({
   query: string
   page: number
 }) {
-  const organization = await requireOrganization()
+  const [session, organization] = await Promise.all([
+    requireSession(),
+    requireOrganization(),
+  ])
   const rows = await getLibraryRows({
     organizationId: organization.id,
     status,
@@ -152,7 +156,14 @@ async function LibraryTable({
                 </TableCell>
 
                 <TableCell className="px-6 py-4 text-right">
-                  <LibraryRowActions document={document} />
+                  <LibraryRowActions
+                    document={document}
+                    canDelete={canDeleteItem(
+                      organization.role,
+                      session.user.id,
+                      document.userId
+                    )}
+                  />
                 </TableCell>
               </TableRow>
             )

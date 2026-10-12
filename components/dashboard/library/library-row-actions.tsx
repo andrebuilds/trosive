@@ -43,9 +43,16 @@ function chatsLabel(count: number) {
  *
  * The only per-row client code on the page. Everything above it stays a server
  * component, so the menu takes the row it acts on as a plain prop rather than
- * refetching it.
+ * refetching it. `canDelete` is false on a teammate's upload when the viewer
+ * is a member; the API refuses it either way.
  */
-function LibraryRowActions({ document }: { document: LibraryRowView }) {
+function LibraryRowActions({
+  document,
+  canDelete,
+}: {
+  document: LibraryRowView
+  canDelete: boolean
+}) {
   const router = useRouter()
   const [isConfirmingDelete, setIsConfirmingDelete] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
@@ -162,16 +169,20 @@ function LibraryRowActions({ document }: { document: LibraryRowView }) {
             Start a chat
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
 
-          <DropdownMenuItem
-            variant="destructive"
-            className="cursor-pointer"
-            onClick={() => setIsConfirmingDelete(true)}
-          >
-            <Trash2Icon />
-            Delete
-          </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="cursor-pointer"
+                onClick={() => setIsConfirmingDelete(true)}
+              >
+                <Trash2Icon />
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

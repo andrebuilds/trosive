@@ -35,6 +35,18 @@ import {
   type SearchResultsView,
   type SearchScopeView,
 } from "@/lib/search"
+import {
+  canDeleteItem,
+  canManageWorkspace,
+  type WorkspaceRole,
+} from "@/lib/workspace-roles"
+
+/** Who is deleting, for the "members delete only their own" rule. */
+export type DeleteActor = {
+  organizationId: string
+  userId: string
+  role: WorkspaceRole
+}
 
 /**
  * Chat and document reads/writes. Server-only.
@@ -97,6 +109,7 @@ export async function listChats(
     select: {
       id: true,
       title: true,
+      userId: true,
       updatedAt: true,
       messages: {
         where: { role: "ASSISTANT" },
@@ -110,6 +123,7 @@ export async function listChats(
   return chats.map((chat) => ({
     id: chat.id,
     title: chat.title,
+    userId: chat.userId,
     updatedAt: chat.updatedAt.toISOString(),
     // Flattened before trimming, so the 140 characters are all words rather
     // than being spent on `##` and `**`. The slice ahead of it bounds the work
@@ -241,6 +255,7 @@ export async function getLibraryRows({
       pageCount: true,
       status: true,
       createdAt: true,
+      userId: true,
       _count: { select: { chats: true } },
     },
   })
@@ -254,6 +269,7 @@ export async function getLibraryRows({
       status: document.status,
       createdAt: document.createdAt.toISOString(),
       chatCount: document._count.chats,
+      userId: document.userId,
     })),
     total,
     page: current,
@@ -574,17 +590,30 @@ export async function getUsage(organizationId: string): Promise<UsageView> {
  * cascade from the schema — a chat that cited it keeps its answers, it just
  * has one fewer source behind them, which is what the confirmation says.
  *
- * Returns false when nothing matched, so the caller can 404.
+ * A member may only delete what they uploaded; owners and admins anything.
+ *
+ * "missing" when nothing matched, so the caller can 404, and "forbidden" when
+ * it's someone else's and the actor is a member, so it can 403.
  */
 export async function deleteDocument(
   documentId: string,
-  organizationId: string
-) {
-  const result = await db.document.deleteMany({
-    where: { id: documentId, organizationId },
+  actor: DeleteActor
+): Promise<"deleted" | "missing" | "forbidden"> {
+  const document = await db.document.findFirst({
+    where: { id: documentId, organizationId: actor.organizationId },
+    select: { id: true, userId: true },
   })
 
-  return result.count > 0
+  if (!document) return "missing"
+  if (!canDeleteItem(actor.role, actor.userId, document.userId)) {
+    return "forbidden"
+  }
+
+  const result = await db.document.deleteMany({
+    where: { id: document.id, organizationId: actor.organizationId },
+  })
+
+  return result.count > 0 ? "deleted" : "missing"
 }
 
 /**
@@ -841,18 +870,36 @@ export async function setMessageFeedback({
  * deleting a shared document here would silently break the other chats that
  * still cite it.
  *
+ * A member may only delete chats they started, and only takes their own
+ * uploads with it: a document someone else added stays in the library even
+ * when this was the last chat citing it.
+ *
  * Returns null when the chat isn't this workspace's, so the caller can 404
- * rather than reporting a deletion that never happened.
+ * rather than reporting a deletion that never happened, and "forbidden" when
+ * a member tries someone else's chat.
  */
-export async function deleteChat(chatId: string, organizationId: string) {
+export async function deleteChat(chatId: string, actor: DeleteActor) {
+  const { organizationId } = actor
   const chat = await db.chat.findFirst({
     where: { id: chatId, organizationId },
-    select: { id: true, documents: { select: { documentId: true } } },
+    select: {
+      id: true,
+      userId: true,
+      documents: {
+        select: { documentId: true, document: { select: { userId: true } } },
+      },
+    },
   })
 
   if (!chat) return null
+  if (!canDeleteItem(actor.role, actor.userId, chat.userId)) {
+    return "forbidden" as const
+  }
 
-  const documentIds = chat.documents.map((link) => link.documentId)
+  const canCollectAny = canManageWorkspace(actor.role)
+  const documentIds = chat.documents
+    .filter((link) => canCollectAny || link.document.userId === actor.userId)
+    .map((link) => link.documentId)
 
   return db.$transaction(async (tx) => {
     // Removing the chat first drops its `chatDocument` rows, which is what
@@ -876,7 +923,9 @@ export async function deleteChat(chatId: string, organizationId: string) {
 
     return {
       deletedDocuments: orphaned.length,
-      keptSharedDocuments: documentIds.length - orphaned.length,
+      // Everything the chat cited that stayed: still in use elsewhere, or a
+      // teammate's upload a member can't delete.
+      keptSharedDocuments: chat.documents.length - orphaned.length,
     }
   })
 }

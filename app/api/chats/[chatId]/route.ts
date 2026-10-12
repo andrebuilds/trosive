@@ -8,7 +8,7 @@ import { deleteChat } from "@/lib/chat-store"
  *
  * Messages and document links go with it through the schema's cascades; the
  * documents themselves are handled in `deleteChat`, which only removes the ones
- * no other chat is still using.
+ * no other chat is still using. Members may only delete chats they started.
  */
 export async function DELETE(
   _request: Request,
@@ -19,10 +19,17 @@ export async function DELETE(
 
   const { chatId } = await params
 
-  const result = await deleteChat(chatId, guard.context.organizationId)
+  const result = await deleteChat(chatId, guard.context)
 
   if (!result) {
     return NextResponse.json({ error: "Chat not found." }, { status: 404 })
+  }
+
+  if (result === "forbidden") {
+    return NextResponse.json(
+      { error: "Only whoever started this chat, or an admin, can delete it." },
+      { status: 403 }
+    )
   }
 
   return NextResponse.json(result)

@@ -219,6 +219,120 @@ export function apiKeyInvalidEmail(
   }
 }
 
+/**
+ * Sent when someone is invited to a workspace. The link opens `/invite/<id>`,
+ * which signs them in (or up) with this address and asks them to accept.
+ */
+export function invitationEmail({
+  inviterName,
+  workspaceName,
+  role,
+  roleDescription,
+  days,
+  url,
+}: {
+  inviterName: string
+  workspaceName: string
+  /** "Admin" or "Member". */
+  role: string
+  roleDescription: string
+  days: number
+  url: string
+}): EmailContent {
+  const heading = `Join ${workspaceName} on ${siteConfig.name}`
+  const body = [
+    `${inviterName} invited you to the ${workspaceName} workspace as ${role === "Admin" ? "an" : "a"} ${role}. ${roleDescription}`,
+    `${siteConfig.name} answers questions about your team's documents and shows exactly where each answer comes from. Answers run on the workspace's own Anthropic key, so you don't need one of your own.`,
+  ]
+  const footnote = `This invitation expires in ${days} days. If you weren't expecting it, you can ignore this email.`
+
+  return {
+    subject: `${inviterName} invited you to ${workspaceName} on ${siteConfig.name}`,
+    html: layout({
+      preheader: `Join ${workspaceName} as ${role === "Admin" ? "an" : "a"} ${role}.`,
+      heading,
+      body,
+      action: "Accept invitation",
+      url,
+      footnote,
+    }),
+    text: [heading, ...body, url, footnote].join("\n\n"),
+  }
+}
+
+/** To the person who sent the invitation, the moment it's accepted. */
+export function memberJoinedEmail({
+  memberName,
+  memberEmail,
+  workspaceName,
+  role,
+  url,
+}: {
+  memberName: string
+  memberEmail: string
+  workspaceName: string
+  role: string
+  url: string
+}): EmailContent {
+  const who = memberName || memberEmail
+  const heading = `${who} joined ${workspaceName}`
+  const body = [
+    `${who}${memberName ? ` (${memberEmail})` : ""} accepted your invitation and is now ${role === "Admin" ? "an" : "a"} ${role} of ${workspaceName}.`,
+    "You can change their role or remove them at any time from Settings, Members.",
+  ]
+  const footnote = `You're receiving this because you invited ${memberEmail}.`
+
+  return {
+    subject: `${who} joined ${workspaceName}`,
+    html: layout({
+      preheader: `Your invitation to ${workspaceName} was accepted.`,
+      heading,
+      body,
+      action: "Manage members",
+      url,
+      footnote,
+      showUrl: false,
+    }),
+    text: [heading, ...body, url, footnote].join("\n\n"),
+  }
+}
+
+/** To the person who just joined: the confirmation that they're in. */
+export function joinedWorkspaceEmail({
+  workspaceName,
+  inviterName,
+  role,
+  roleDescription,
+  url,
+}: {
+  workspaceName: string
+  inviterName: string
+  role: string
+  roleDescription: string
+  url: string
+}): EmailContent {
+  const heading = `You're in: ${workspaceName}`
+  const body = [
+    `You joined ${workspaceName} as ${role === "Admin" ? "an" : "a"} ${role}, at ${inviterName}'s invitation. ${roleDescription}`,
+    "Its documents and chats are shared with everyone in the workspace, and answers run on the workspace's Anthropic key.",
+  ]
+  const footnote = `Belong to more than one workspace? Switch between them from the menu under the ${siteConfig.name} logo.`
+
+  return {
+    subject: `You're in: ${workspaceName}`,
+    html: layout({
+      preheader: `You're now ${role === "Admin" ? "an" : "a"} ${role} of ${workspaceName}.`,
+      heading,
+      body,
+      action: `Open ${workspaceName}`,
+      url,
+      footnote,
+      showUrl: false,
+    }),
+    text: [heading, ...body, url, footnote].join("\n\n"),
+  }
+}
+
 export function verificationEmail(url: string): EmailContent {
   const heading = "Confirm your email address"
   const body = `Tap the button below to finish setting up your ${siteConfig.name} account.`

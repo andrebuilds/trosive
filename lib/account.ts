@@ -1,7 +1,10 @@
+import type { Prisma } from "@/generated/prisma/client"
+
 import { db } from "@/lib/db"
+import { workspaceRole } from "@/lib/workspace-roles"
 
 /**
- * What deleting an account has to clean up itself. Server-only.
+ * What deleting an account or a workspace has to clean up itself. Server-only.
  *
  * Better Auth's cascades reach sessions, accounts, memberships and
  * invitations — every model it owns. Nothing else in the schema hangs off
@@ -10,62 +13,113 @@ import { db } from "@/lib/db"
  * here, from `beforeDelete`, while the account is still there to scope by.
  */
 
-/**
- * The workspaces that exist only for this user.
- *
- * A workspace with another member is somebody else's too, so it stays — the
- * user's `member` row goes with the account and the organization carries on
- * without them. Everything else is theirs alone and goes with them.
- */
-async function soleOrganizationIds(userId: string) {
-  const memberships = await db.member.findMany({
-    where: { userId },
-    select: { organizationId: true },
-  })
-
-  const organizationIds = memberships.map((member) => member.organizationId)
-
-  if (organizationIds.length === 0) return []
-
-  const shared = await db.member.findMany({
-    where: { organizationId: { in: organizationIds }, userId: { not: userId } },
-    select: { organizationId: true },
-    distinct: ["organizationId"],
-  })
-
-  const sharedIds = new Set(shared.map((member) => member.organizationId))
-
-  return organizationIds.filter((id) => !sharedIds.has(id))
-}
+type Tx = Prisma.TransactionClient
 
 /**
- * Removes everything the account leaves behind, in one transaction so a
- * half-deleted account can't be signed back into.
+ * Every row a workspace owns, then the workspace.
  *
  * Chats before documents, and both before the organization: `chatDocument`
  * cascades from either side, and dropping the organization first would leave
  * its documents behind — they carry a plain `organizationId` column, not a
- * relation, so Postgres won't collect them.
+ * relation, so Postgres won't collect them. Members and invitations do
+ * cascade from the organization.
+ */
+async function deleteWorkspaces(tx: Tx, organizationIds: string[]) {
+  if (organizationIds.length === 0) return
+
+  const scope = { organizationId: { in: organizationIds } }
+
+  await tx.chat.deleteMany({ where: scope })
+  await tx.document.deleteMany({ where: scope })
+  // The usage ledger outlives chats and documents by design, but not the
+  // workspace itself — there is nothing left to count once it's gone.
+  await tx.questionEvent.deleteMany({ where: scope })
+  // Its Anthropic key goes too: a ciphertext with no workspace to use it is
+  // only a liability.
+  await tx.workspaceApiKey.deleteMany({ where: scope })
+  await tx.organization.deleteMany({ where: { id: { in: organizationIds } } })
+}
+
+/**
+ * Settings → Danger zone → Delete workspace, owner only. Everyone else in it
+ * loses access; their sessions fall back to another workspace of theirs, or
+ * onboarding, on the next request.
+ */
+export async function deleteWorkspaceData(organizationId: string) {
+  await db.$transaction((tx) => deleteWorkspaces(tx, [organizationId]))
+}
+
+/**
+ * Splits the user's workspaces into the ones that exist only for them, which
+ * go with the account, and the shared ones they own alone, which need a new
+ * owner before the account goes or they'd be left with nobody in charge.
+ *
+ * The successor is the longest-standing admin, or failing that the
+ * longest-standing member: whoever the workspace has trusted the most.
+ */
+async function planDeparture(tx: Tx, userId: string) {
+  const memberships = await tx.member.findMany({
+    where: { userId },
+    select: { organizationId: true, role: true },
+  })
+
+  if (memberships.length === 0) return { sole: [], successors: [] }
+
+  const others = await tx.member.findMany({
+    where: {
+      organizationId: { in: memberships.map((member) => member.organizationId) },
+      userId: { not: userId },
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, organizationId: true, role: true },
+  })
+
+  const sole: string[] = []
+  const successors: string[] = []
+
+  for (const membership of memberships) {
+    const rest = others.filter(
+      (member) => member.organizationId === membership.organizationId
+    )
+
+    if (rest.length === 0) {
+      sole.push(membership.organizationId)
+      continue
+    }
+
+    const leavingOwner = workspaceRole(membership.role) === "owner"
+    const anotherOwner = rest.some(
+      (member) => workspaceRole(member.role) === "owner"
+    )
+
+    if (!leavingOwner || anotherOwner) continue
+
+    const successor =
+      rest.find((member) => workspaceRole(member.role) === "admin") ?? rest[0]
+
+    successors.push(successor.id)
+  }
+
+  return { sole, successors }
+}
+
+/**
+ * Removes everything the account leaves behind, in one transaction so a
+ * half-deleted account can't be signed back into: its avatar, the workspaces
+ * nobody else is in, and ownership of the shared ones, handed on.
  */
 export async function purgeUserData(userId: string) {
-  const organizationIds = await soleOrganizationIds(userId)
+  await db.$transaction(async (tx) => {
+    const { sole, successors } = await planDeparture(tx, userId)
 
-  await db.$transaction([
-    db.avatar.deleteMany({ where: { userId } }),
-    db.chat.deleteMany({ where: { organizationId: { in: organizationIds } } }),
-    db.document.deleteMany({
-      where: { organizationId: { in: organizationIds } },
-    }),
-    // The usage ledger outlives chats and documents by design, but not the
-    // workspace itself — there is nothing left to count once it's gone.
-    db.questionEvent.deleteMany({
-      where: { organizationId: { in: organizationIds } },
-    }),
-    // Its Anthropic key goes too: a ciphertext with no workspace to use it is
-    // only a liability.
-    db.workspaceApiKey.deleteMany({
-      where: { organizationId: { in: organizationIds } },
-    }),
-    db.organization.deleteMany({ where: { id: { in: organizationIds } } }),
-  ])
+    await tx.avatar.deleteMany({ where: { userId } })
+    await deleteWorkspaces(tx, sole)
+
+    if (successors.length > 0) {
+      await tx.member.updateMany({
+        where: { id: { in: successors } },
+        data: { role: "owner" },
+      })
+    }
+  })
 }

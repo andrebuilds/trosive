@@ -10,6 +10,7 @@ import {
   extractDocument,
   MAX_DOCUMENT_BYTES,
 } from "@/lib/documents"
+import { canManageWorkspace } from "@/lib/workspace-roles"
 
 /**
  * The workspace library.
@@ -111,11 +112,19 @@ export async function POST(request: Request) {
  * Empties the workspace's library — Settings → Danger zone.
  *
  * Chats survive: they keep the answers already written, and lose the sources
- * those answers cite, which is what the confirmation warns about.
+ * those answers cite, which is what the confirmation warns about. Owners and
+ * admins only.
  */
 export async function DELETE() {
   const guard = await requireApiContext()
   if (!guard.ok) return guard.response
+
+  if (!canManageWorkspace(guard.context.role)) {
+    return NextResponse.json(
+      { error: "Only owners and admins can clear the workspace's library." },
+      { status: 403 }
+    )
+  }
 
   const documents = await clearDocuments(guard.context.organizationId)
 

@@ -96,6 +96,8 @@ export type LibraryRowView = LibraryDocumentView & {
   createdAt: string
   /** Chats citing it — what deleting the document would leave behind. */
   chatCount: number
+  /** Who uploaded it: members may only delete their own. */
+  userId: string
 }
 
 /**

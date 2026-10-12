@@ -4,7 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 
 import { authClient } from "@/lib/auth-client"
-import type { DashboardNavCounts } from "@/lib/dashboard-nav"
+import { APP_ROOT, type DashboardNavCounts } from "@/lib/dashboard-nav"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +22,11 @@ import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
 import { authErrorMessage } from "@/components/auth/auth-errors"
 
-type ActionId = "clear-history" | "clear-library" | "delete-account"
+type ActionId =
+  | "clear-history"
+  | "clear-library"
+  | "delete-workspace"
+  | "delete-account"
 
 /** "12 chats" / "1 chat", and the same for documents. */
 function plural(count: number, noun: string) {
@@ -52,23 +56,35 @@ async function clearAll(path: string) {
  * Each row runs behind an `AlertDialog`, and the confirmation names what will
  * actually go: the counts come from the server so nobody confirms "delete
  * everything" without seeing how much everything is.
+ *
+ * Clearing the workspace is for owners and admins, deleting it for the owner
+ * alone; the routes refuse anyone else, and the rows aren't shown to them.
  */
 function DangerZoneSettings({
   counts,
   hasPassword,
+  workspaceName,
+  canManage,
+  isOwner,
 }: {
   counts: DashboardNavCounts
   /** False for an account that only ever signed in with Google or GitHub. */
   hasPassword: boolean
+  workspaceName: string
+  /** Owner or admin of the active workspace. */
+  canManage: boolean
+  isOwner: boolean
 }) {
   const router = useRouter()
 
   const [confirming, setConfirming] = React.useState<ActionId | null>(null)
   const [running, setRunning] = React.useState(false)
   const [password, setPassword] = React.useState("")
+  const [typedName, setTypedName] = React.useState("")
 
   function open(id: ActionId) {
     setPassword("")
+    setTypedName("")
     setConfirming(id)
   }
 
@@ -98,6 +114,30 @@ function DangerZoneSettings({
     router.refresh()
   }
 
+  async function deleteWorkspace() {
+    const response = await fetch("/api/workspace", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: typedName.trim() }),
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      throw new Error(body?.error ?? "Try again in a moment.")
+    }
+
+    toast.add({
+      type: "success",
+      title: `Deleted ${workspaceName}.`,
+      description: "Its chats, documents and API key are gone.",
+    })
+
+    // The app opens in another workspace of yours, or onboarding if this was
+    // the last one.
+    router.replace(APP_ROOT)
+    router.refresh()
+  }
+
   async function deleteAccount() {
     // Better Auth verifies the password itself, and takes the workspace's
     // chats and documents down with the account through `beforeDelete`.
@@ -114,7 +154,7 @@ function DangerZoneSettings({
     toast.add({
       type: "success",
       title: "Your account has been deleted.",
-      description: "Everything in your workspace has been removed.",
+      description: "So has every workspace nobody else was in.",
     })
 
     // The session cookie is already gone; `refresh` stops the signed-in tree
@@ -130,11 +170,12 @@ function DangerZoneSettings({
       description: "Delete every conversation. Your documents stay indexed.",
       action: "Clear history",
       destructive: false,
+      visible: canManage,
       // Nothing to confirm when there's nothing there.
       disabled: counts.chats === 0,
       confirm: {
         title: "Clear your chat history?",
-        body: `All ${plural(counts.chats, "chat")} in this workspace will be deleted along with their answers, and can't be recovered. Your documents stay in the library.`,
+        body: `All ${plural(counts.chats, "chat")} in this workspace will be deleted along with their answers, and can't be recovered. This includes your teammates' chats. Your documents stay in the library.`,
         button: "Clear history",
         run: clearHistory,
         failure: "Couldn't clear your chat history.",
@@ -147,39 +188,59 @@ function DangerZoneSettings({
         "Delete every document and its embeddings from your library.",
       action: "Clear library",
       destructive: false,
+      visible: canManage,
       disabled: counts.documents === 0,
       confirm: {
         title: "Clear your library?",
-        body: `All ${plural(counts.documents, "document")} will be removed and can't be recovered. Chats keep the answers already written, but the passages behind them will no longer open.`,
+        body: `All ${plural(counts.documents, "document")} in this workspace will be removed and can't be recovered, including your teammates' uploads. Chats keep the answers already written, but the passages behind them will no longer open.`,
         button: "Clear library",
         run: clearLibrary,
         failure: "Couldn't clear your library.",
       },
     },
     {
+      id: "delete-workspace" as const,
+      title: "Delete workspace",
+      description: `Permanently remove ${workspaceName} for everyone in it.`,
+      action: "Delete workspace",
+      destructive: true,
+      visible: isOwner,
+      disabled: false,
+      confirm: {
+        title: `Delete ${workspaceName}?`,
+        body: `${workspaceName}, its ${plural(counts.chats, "chat")}, ${plural(counts.documents, "document")} and Anthropic key will be permanently deleted, and every member loses access. This can't be undone.`,
+        button: "Delete workspace",
+        run: deleteWorkspace,
+        failure: "Couldn't delete the workspace.",
+      },
+    },
+    {
       id: "delete-account" as const,
       title: "Delete account",
       description:
-        "Permanently remove your account, documents, and chat history.",
+        "Permanently remove your account and every workspace only you are in.",
       action: "Delete account",
       destructive: true,
+      visible: true,
       disabled: false,
       confirm: {
         title: "Delete your account?",
-        body: `Your account, this workspace, ${plural(counts.chats, "chat")} and ${plural(counts.documents, "document")} will be permanently deleted. This can't be undone.`,
+        body: "Your account will be permanently deleted, along with every workspace nobody else is in. Workspaces you share stay with their members, and if you own one, its longest-standing admin becomes the owner. This can't be undone.",
         button: "Delete account",
         run: deleteAccount,
         failure: "Couldn't delete your account.",
       },
     },
-  ]
+  ].filter((item) => item.visible)
 
   const pending = ACTIONS.find((item) => item.id === confirming)
 
   // The password is the only gate on an irreversible action, so an empty one
-  // never reaches the server.
+  // never reaches the server. Deleting a workspace asks for its name instead.
   const canConfirm =
-    pending?.id !== "delete-account" || !hasPassword || password.length > 0
+    pending?.id === "delete-workspace"
+      ? typedName.trim() === workspaceName
+      : pending?.id !== "delete-account" || !hasPassword || password.length > 0
 
   async function confirm() {
     if (!pending || !canConfirm) return
@@ -263,6 +324,28 @@ function DangerZoneSettings({
               {pending?.confirm.body}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {pending?.id === "delete-workspace" && (
+            <Field>
+              <FieldLabel htmlFor="delete-workspace-name">
+                Type{" "}
+                <span className="font-semibold text-foreground">
+                  {workspaceName}
+                </span>{" "}
+                to confirm
+              </FieldLabel>
+              <Input
+                id="delete-workspace-name"
+                autoComplete="off"
+                value={typedName}
+                disabled={running}
+                onChange={(event) => setTypedName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") confirm()
+                }}
+              />
+            </Field>
+          )}
 
           {pending?.id === "delete-account" && hasPassword && (
             <Field>

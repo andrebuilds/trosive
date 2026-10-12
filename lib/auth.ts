@@ -20,17 +20,27 @@ import { actorNameFor, recordAdminLog } from "@/lib/admin-log-store"
 import { isAdminRole } from "@/lib/admin"
 import { getAppSettings } from "@/lib/app-settings-store"
 import { configuredSocialProviders } from "@/lib/auth-providers"
-import { APP_ROOT } from "@/lib/dashboard-nav"
+import { APP_ROOT, invitationRoute, MEMBERS_ROUTE } from "@/lib/dashboard-nav"
 import { db } from "@/lib/db"
 import {
   sendChangeEmailVerification,
+  sendInvitationEmail,
+  sendJoinedWorkspaceEmail,
   sendMagicLinkEmail,
+  sendMemberJoinedEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendWelcomeEmail,
 } from "@/lib/email"
 import { MAGIC_LINK_MINUTES } from "@/lib/email/templates"
+import { hasOpenInvitation } from "@/lib/invitations"
 import { siteConfig } from "@/lib/site-config"
+import {
+  INVITATION_DAYS,
+  ROLE_DESCRIPTIONS,
+  roleLabel,
+  workspaceRole,
+} from "@/lib/workspace-roles"
 
 const isProduction = process.env.NODE_ENV === "production"
 
@@ -157,14 +167,16 @@ export const auth = betterAuth({
          * create a user has to pass — email sign-up and the OAuth callback
          * alike, rather than one guard per entry point.
          *
-         * Deny by default when registration is closed: the admin console's own
-         * create-user endpoint is the single exception, because that is an
-         * admin deciding to add someone, not the public letting itself in.
+         * Deny by default when registration is closed. Two exceptions, both a
+         * person with authority deciding to let someone in rather than the
+         * public letting itself in: the admin console's create-user endpoint,
+         * and an open invitation to a workspace for this address.
          */
-        before: async (_user, context) => {
+        before: async (user, context) => {
           const { allowSignUps } = await getAppSettings()
 
           if (allowSignUps || context?.path === "/admin/create-user") return
+          if (user.email && (await hasOpenInvitation(user.email))) return
 
           throw new APIError("FORBIDDEN", {
             message: "New sign-ups are closed right now.",
@@ -191,6 +203,33 @@ export const auth = betterAuth({
               console.error("[email] welcome email failed", error)
             }
           })
+        },
+      },
+    },
+
+    session: {
+      create: {
+        /**
+         * Every sign-in starts in a definite workspace: the one the user has
+         * belonged to longest. Without it the active workspace would be
+         * whichever membership the database happened to return first. The
+         * switcher moves it from there, and accepting an invitation moves it
+         * to the workspace just joined.
+         */
+        before: async (session) => {
+          if (session.activeOrganizationId) return
+
+          const membership = await db.member.findFirst({
+            where: { userId: session.userId },
+            orderBy: { createdAt: "asc" },
+            select: { organizationId: true },
+          })
+
+          if (!membership) return
+
+          return {
+            data: { ...session, activeOrganizationId: membership.organizationId },
+          }
         },
       },
     },
@@ -308,11 +347,99 @@ export const auth = betterAuth({
 
   plugins: [
     // A workspace is an organization: every signed-in user creates one before
-    // they reach the product, and the creator owns it. Invitations are not
-    // wired up yet — add `sendInvitationEmail` here when they are.
+    // they reach the product, and the creator owns it. Anyone can create as
+    // many as they like (no `organizationLimit`), and invite people into them
+    // as admins or members. The roles and what each can do are in
+    // `lib/workspace-roles.ts`; Better Auth enforces them on its endpoints.
     organization({
-      organizationLimit: 5,
       membershipLimit: 100,
+      invitationExpiresIn: INVITATION_DAYS * 24 * 60 * 60,
+      // Inviting the same address again replaces the old invitation, so
+      // there's only ever one link that works.
+      cancelPendingInvitationsOnReInvite: true,
+
+      sendInvitationEmail: async ({ id, email, role, organization, inviter, invitation }) => {
+        await sendInvitationEmail(email, id, new Date(invitation.expiresAt), {
+          inviterName: inviter.user.name || inviter.user.email,
+          workspaceName: organization.name,
+          role: roleLabel(role),
+          roleDescription: ROLE_DESCRIPTIONS[workspaceRole(role)],
+          days: INVITATION_DAYS,
+          url: `${appOrigin}${invitationRoute(id)}`,
+        })
+      },
+
+      organizationHooks: {
+        // Ownership is handed over (`app/api/workspace/owner`), never sent in
+        // an invitation or set as a role: a workspace has exactly one owner.
+        beforeCreateInvitation: async ({ invitation }) => {
+          if (workspaceRole(invitation.role) === "owner") {
+            throw new APIError("BAD_REQUEST", {
+              message: "Invite people as an admin or a member.",
+            })
+          }
+        },
+
+        beforeUpdateMemberRole: async ({ newRole }) => {
+          if (workspaceRole(newRole) === "owner") {
+            throw new APIError("BAD_REQUEST", {
+              message: "Use “Make owner” to hand the workspace over.",
+            })
+          }
+        },
+
+        /**
+         * Two emails at once: one tells whoever sent the invitation that it
+         * was accepted, the other confirms to the new member that they're in.
+         * `allSettled` so one failing never holds back the other, and `after`
+         * keeps both off the accept request.
+         *
+         * The inviter may have left the workspace since; then the owner hears
+         * about it instead, since someone with a say over the workspace should.
+         */
+        afterAcceptInvitation: async ({ invitation, member, user, organization }) => {
+          after(async () => {
+            const role = roleLabel(member.role)
+            const [inviter, owner] = await Promise.all([
+              db.member.findFirst({
+                where: { organizationId: organization.id, userId: invitation.inviterId },
+                select: { user: { select: { name: true, email: true } } },
+              }),
+              db.member.findFirst({
+                where: { organizationId: organization.id, role: { contains: "owner" } },
+                select: { user: { select: { name: true, email: true } } },
+              }),
+            ])
+            const notified = inviter ?? owner
+
+            const results = await Promise.allSettled([
+              notified
+                ? sendMemberJoinedEmail(notified.user.email, member.id, {
+                    memberName: user.name || user.email,
+                    memberEmail: user.email,
+                    workspaceName: organization.name,
+                    role,
+                    url: `${appOrigin}${MEMBERS_ROUTE}`,
+                  })
+                : Promise.resolve(),
+              sendJoinedWorkspaceEmail(user.email, member.id, {
+                workspaceName: organization.name,
+                inviterName:
+                  inviter?.user.name || inviter?.user.email || "a teammate",
+                role,
+                roleDescription: ROLE_DESCRIPTIONS[workspaceRole(member.role)],
+                url: `${appOrigin}${APP_ROOT}`,
+              }),
+            ])
+
+            for (const result of results) {
+              if (result.status === "rejected") {
+                console.error("[email] member joined email failed", result.reason)
+              }
+            }
+          })
+        },
+      },
     }),
 
     // Staff access to the admin console at `/app/admin`. Nothing about it is
@@ -343,10 +470,11 @@ export const auth = betterAuth({
         // Checked here as well as in the user hook, so a closed registration
         // is said in the dialog, not on a dead link. Only while sign-ups are
         // closed does this tell an unknown address apart from a known one.
+        // An invited address gets through, as it does in the hook.
         if (!existing) {
           const { allowSignUps } = await getAppSettings()
 
-          if (!allowSignUps) {
+          if (!allowSignUps && !(await hasOpenInvitation(email))) {
             throw new APIError("FORBIDDEN", {
               message: "New sign-ups are closed right now.",
             })

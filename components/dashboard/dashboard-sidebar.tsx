@@ -9,12 +9,11 @@ import type { ApiKeyStatus } from "@/lib/byok"
 import { CHATS_ROUTE } from "@/lib/chat"
 import {
   accountMenuNav,
-  APP_ROOT,
   visibleDashboardNav,
   isDashboardNavItemActive,
-  workspaceInitials,
   type DashboardNavCounts,
 } from "@/lib/dashboard-nav"
+import type { Workspace } from "@/lib/session"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,8 +35,8 @@ import {
 } from "@/components/ui/sidebar"
 import { ApiKeyLine } from "@/components/api-key/api-key-line"
 import { UserAvatar } from "@/components/auth/user-avatar"
-import { TrosiveLogo, TrosiveMark } from "@/components/brand/trosive-logo"
 import { AccountMenu } from "@/components/dashboard/account-menu"
+import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher"
 
 /**
  * Product navigation — `ui-design/dashboard/light/dashboard-sidebar.png`.
@@ -45,14 +44,17 @@ import { AccountMenu } from "@/components/dashboard/account-menu"
  */
 function DashboardSidebar({
   user,
-  workspaceName,
+  workspaces,
+  activeWorkspaceId,
   counts,
   keyStatus,
   isAdmin,
 }: {
   user: SessionUser
-  /** The active organization's name, resolved by the workspace layout. */
-  workspaceName: string
+  /** Every workspace the user belongs to, for the switcher. */
+  workspaces: Workspace[]
+  /** The one being worked in, resolved by the workspace layout. */
+  activeWorkspaceId: string
   /** Live chat and document totals for this workspace. */
   counts: DashboardNavCounts
   /** The workspace's Anthropic key, shown under the user's name. */
@@ -65,22 +67,18 @@ function DashboardSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      {/* Collapsed to the icon rail, the wordmark gives way to the mark and
-          "New chat" to its plus. */}
-      <SidebarHeader className="gap-4 px-3 pt-4 pb-2 group-data-[collapsible=icon]:px-2">
-        <Link
-          href={APP_ROOT}
-          aria-label="Trosive home"
-          className="px-1 group-data-[collapsible=icon]:px-0"
-        >
-          <TrosiveLogo className="group-data-[collapsible=icon]:hidden" />
-          <TrosiveMark className="hidden group-data-[collapsible=icon]:block" />
-        </Link>
+      {/* Collapsed to the icon rail, the switcher keeps only the mark and
+          "New chat" only its plus. */}
+      <SidebarHeader className="gap-3 px-2 pt-3 pb-2">
+        <WorkspaceSwitcher
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+        />
 
         <Button
           size="lg"
           aria-label="New chat"
-          className="w-full cursor-pointer group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+          className="mx-1 w-auto cursor-pointer group-data-[collapsible=icon]:mx-0 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
           render={<Link href={CHATS_ROUTE} />}
           nativeButton={false}
         >
@@ -90,18 +88,6 @@ function DashboardSidebar({
       </SidebarHeader>
 
       <SidebarContent className="gap-1">
-        <div className="flex items-center gap-3 px-5 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <span
-            title={workspaceName}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md border text-[0.625rem] font-semibold tracking-wide"
-          >
-            {workspaceInitials(workspaceName)}
-          </span>
-          <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
-            {workspaceName}
-          </span>
-        </div>
-
         {nav.map((group, index) => (
           <SidebarGroup
             key={group.title ?? index}

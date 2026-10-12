@@ -12,6 +12,7 @@ import {
 import { decryptSecret, encryptSecret } from "@/lib/crypto"
 import { db } from "@/lib/db"
 import { sendApiKeyInvalidEmail } from "@/lib/email"
+import { canManageWorkspace } from "@/lib/workspace-roles"
 
 /**
  * Bring your own key: the store. Server-only.
@@ -22,9 +23,6 @@ import { sendApiKeyInvalidEmail } from "@/lib/email"
  * written anywhere but `ciphertext`.
  */
 
-/** Workspace roles that may set, replace or remove the key. */
-const MANAGER_ROLES = new Set(["owner", "admin"])
-
 /** For the link in the "key stopped working" mail. */
 const appOrigin = (
   process.env.NEXT_PUBLIC_APP_URL ??
@@ -32,13 +30,7 @@ const appOrigin = (
   "http://localhost:3000"
 ).replace(/\/$/, "")
 
-/** Better Auth stores several roles as a comma-separated string. */
-function hasManagerRole(role: string | null | undefined) {
-  return (role ?? "")
-    .split(",")
-    .some((entry) => MANAGER_ROLES.has(entry.trim()))
-}
-
+/** Owners and admins set, replace or remove the key; see `lib/workspace-roles`. */
 export async function canManageWorkspaceKey(
   organizationId: string,
   userId: string
@@ -48,7 +40,7 @@ export async function canManageWorkspaceKey(
     select: { role: true },
   })
 
-  return hasManagerRole(member?.role)
+  return canManageWorkspace(member?.role)
 }
 
 /**
@@ -260,7 +252,7 @@ export async function markWorkspaceKeyInvalid(
     if (!key || !organization) return
 
     const recipients = members
-      .filter((member) => hasManagerRole(member.role))
+      .filter((member) => canManageWorkspace(member.role))
       .map((member) => member.user.email)
 
     await Promise.all(

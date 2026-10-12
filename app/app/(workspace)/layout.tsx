@@ -5,6 +5,7 @@ import { canAsk } from "@/lib/byok"
 import { getNavCounts } from "@/lib/chat-store"
 import { getStarCount } from "@/lib/github"
 import {
+  getWorkspaces,
   isCurrentUserAdmin,
   requireOrganization,
   requireSession,
@@ -29,13 +30,15 @@ export default async function WorkspaceLayout({
 }>) {
   const session = await requireSession()
   const organization = await requireOrganization()
-  const [cookieStore, counts, keyStatus, isAdmin, stars] = await Promise.all([
-    cookies(),
-    getNavCounts(organization.id),
-    getWorkspaceKeyStatus(organization.id, session.user.id),
-    isCurrentUserAdmin(),
-    getStarCount(),
-  ])
+  const [cookieStore, workspaces, counts, keyStatus, isAdmin, stars] =
+    await Promise.all([
+      cookies(),
+      getWorkspaces(),
+      getNavCounts(organization.id),
+      getWorkspaceKeyStatus(organization.id, session.user.id),
+      isCurrentUserAdmin(),
+      getStarCount(),
+    ])
 
   return (
     <SidebarProvider
@@ -43,7 +46,8 @@ export default async function WorkspaceLayout({
     >
       <DashboardSidebar
         user={session.user}
-        workspaceName={organization.name}
+        workspaces={workspaces}
+        activeWorkspaceId={organization.id}
         counts={counts}
         keyStatus={keyStatus}
         isAdmin={isAdmin}

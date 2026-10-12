@@ -25,7 +25,10 @@ answers are billed by Anthropic to that key.
 - **Cited chat** — streaming answers from Claude where every claim links to the
   passage it is based on, with a source reader that highlights the quote.
 - **Passage search** — search across the whole library or a subset of it.
-- **Workspaces** — organizations with members, settings, and usage stats.
+- **Workspaces** — create as many as you like and switch between them from
+  the sidebar. Invite teammates by email as admins or members; everyone in a
+  workspace shares its library, chats and API key. Members delete only what
+  they made, owners and admins anything.
 - **Admin console** — users, workspaces, an append-only activity log, sign-up
   and maintenance switches, and chat retention.
 - **Bring your own key** — each workspace saves its own Anthropic API key,
@@ -103,6 +106,11 @@ Without `RESEND_API_KEY`, sign-in links and other emails are printed to the
 terminal instead of sent, which is enough to test the flows locally. To send for
 real, add a [Resend](https://resend.com) key and set `EMAIL_FROM` to an address
 on a domain you've verified there.
+
+Invitations are emailed to the invited address and work for seven days. When
+someone accepts, two emails go out at once: one tells whoever invited them, the
+other confirms to the new member that they're in. An invited address can sign
+up even while sign-ups are closed in the admin console.
 
 ### Social sign-in (optional)
 

@@ -19,12 +19,18 @@ export const ONBOARDING_ROUTE = `${APP_ROOT}/onboarding`
 export const ONBOARDING_API_KEY_ROUTE = `${ONBOARDING_ROUTE}/api-key`
 
 /**
- * Settings is one screen with three tabs, but each tab is its own route — the
+ * Settings is one screen with four tabs, but each tab is its own route — the
  * tab strip is navigation, so it survives a reload and can be linked to.
  */
 export const SETTINGS_ROUTE = `${APP_ROOT}/settings`
+export const MEMBERS_ROUTE = `${SETTINGS_ROUTE}/members`
 export const API_KEY_ROUTE = `${SETTINGS_ROUTE}/api-key`
 export const DANGER_ZONE_ROUTE = `${SETTINGS_ROUTE}/danger-zone`
+
+/** Where an invitation email's button goes. Outside `/app`: it works signed out. */
+export function invitationRoute(invitationId: string) {
+  return `/invite/${invitationId}`
+}
 
 export const USAGE_ROUTE = `${APP_ROOT}/usage`
 
@@ -118,7 +124,7 @@ export const dashboardNav: DashboardNavGroup[] = [
 
 /**
  * Links above "Sign out" in the account menu, in both sidebars. Settings'
- * own tabs (Account, API key, Danger zone) are a click away from there.
+ * own tabs (Account, Members, API key, Danger zone) are a click away from there.
  */
 export const accountMenuNav = [
   { href: SETTINGS_ROUTE, label: "Settings", icon: SettingsIcon },

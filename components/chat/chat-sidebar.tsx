@@ -14,6 +14,8 @@ import type { SessionUser } from "@/lib/auth-client"
 import type { ApiKeyStatus } from "@/lib/byok"
 import { chatRoute, CHATS_ROUTE, type ChatSummary } from "@/lib/chat"
 import { accountMenuNav, APP_ROOT } from "@/lib/dashboard-nav"
+import type { Workspace } from "@/lib/session"
+import { canDeleteItem, type WorkspaceRole } from "@/lib/workspace-roles"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,8 +45,8 @@ import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
 import { ApiKeyLine } from "@/components/api-key/api-key-line"
 import { UserAvatar } from "@/components/auth/user-avatar"
-import { TrosiveLogo, TrosiveMark } from "@/components/brand/trosive-logo"
 import { AccountMenu } from "@/components/dashboard/account-menu"
+import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher"
 
 /**
  * Chat chrome — `ui-design/dashboard/light/chat-sidebar.png`. The product nav
@@ -54,10 +56,19 @@ import { AccountMenu } from "@/components/dashboard/account-menu"
  */
 function ChatSidebar({
   user,
+  workspaces,
+  activeWorkspaceId,
+  role,
   chats,
   keyStatus,
 }: {
   user: SessionUser
+  /** Every workspace the user belongs to, for the switcher. */
+  workspaces: Workspace[]
+  /** The one being worked in, resolved by the chat layout. */
+  activeWorkspaceId: string
+  /** The user's role there: members only delete their own chats. */
+  role: WorkspaceRole
   /** This workspace's conversations, newest first. */
   chats: ChatSummary[]
   /** The workspace's Anthropic key, from the layout. Never the key itself. */
@@ -102,7 +113,7 @@ function ChatSidebar({
         title: `Deleted "${pendingDelete.title}".`,
         description:
           keptSharedDocuments > 0
-            ? `${deletedDocuments} document${deletedDocuments === 1 ? "" : "s"} removed. ${keptSharedDocuments} kept — still used by another chat.`
+            ? `${deletedDocuments} document${deletedDocuments === 1 ? "" : "s"} removed. ${keptSharedDocuments} kept in the library.`
             : `${deletedDocuments} document${deletedDocuments === 1 ? "" : "s"} removed from your library.`,
       })
 
@@ -126,22 +137,18 @@ function ChatSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      {/* Collapsed to the icon rail, the wordmark gives way to the mark and
-          "New chat" to its plus. */}
-      <SidebarHeader className="gap-4 px-3 pt-4 pb-2 group-data-[collapsible=icon]:px-2">
-        <Link
-          href={APP_ROOT}
-          aria-label="Trosive home"
-          className="px-1 group-data-[collapsible=icon]:px-0"
-        >
-          <TrosiveLogo className="group-data-[collapsible=icon]:hidden" />
-          <TrosiveMark className="hidden group-data-[collapsible=icon]:block" />
-        </Link>
+      {/* Collapsed to the icon rail, the switcher keeps only the mark and
+          "New chat" only its plus. */}
+      <SidebarHeader className="gap-3 px-2 pt-3 pb-2">
+        <WorkspaceSwitcher
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+        />
 
         <Button
           size="lg"
           aria-label="New chat"
-          className="w-full cursor-pointer group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+          className="mx-1 w-auto cursor-pointer group-data-[collapsible=icon]:mx-0 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
           render={<Link href={CHATS_ROUTE} />}
           nativeButton={false}
         >
@@ -193,14 +200,16 @@ function ChatSidebar({
                         <span>{chat.title}</span>
                       </SidebarMenuButton>
 
-                      <SidebarMenuAction
-                        showOnHover
-                        aria-label={`Delete ${chat.title}`}
-                        className="top-2.5 cursor-pointer hover:text-destructive"
-                        onClick={() => setPendingDelete(chat)}
-                      >
-                        <Trash2Icon />
-                      </SidebarMenuAction>
+                      {canDeleteItem(role, user.id, chat.userId) && (
+                        <SidebarMenuAction
+                          showOnHover
+                          aria-label={`Delete ${chat.title}`}
+                          className="top-2.5 cursor-pointer hover:text-destructive"
+                          onClick={() => setPendingDelete(chat)}
+                        >
+                          <Trash2Icon />
+                        </SidebarMenuAction>
+                      )}
                     </SidebarMenuItem>
                   )
                 })}

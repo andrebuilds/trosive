@@ -4,6 +4,7 @@ import { ANTHROPIC_BRIEF_ANALYSIS_PROMPT } from "@/lib/anthropic"
 import { requireApiContext } from "@/lib/api-session"
 import { clearChats, createChat, readyDocumentIds } from "@/lib/chat-store"
 import { MAX_DOCUMENTS_PER_CHAT } from "@/lib/chat"
+import { canManageWorkspace } from "@/lib/workspace-roles"
 
 /** "Website_Brief_v2.pdf" → "Website Brief v2". */
 function titleFromDocument(name: string) {
@@ -84,11 +85,18 @@ export async function POST(request: Request) {
  *
  * Workspace-wide, not per-user: chats belong to the workspace everywhere else
  * in the app, so "delete every conversation" has to mean the same set the
- * sidebar counts.
+ * sidebar counts. Owners and admins only, for the same reason.
  */
 export async function DELETE() {
   const guard = await requireApiContext()
   if (!guard.ok) return guard.response
+
+  if (!canManageWorkspace(guard.context.role)) {
+    return NextResponse.json(
+      { error: "Only owners and admins can clear the workspace's chats." },
+      { status: 403 }
+    )
+  }
 
   const chats = await clearChats(guard.context.organizationId)
 

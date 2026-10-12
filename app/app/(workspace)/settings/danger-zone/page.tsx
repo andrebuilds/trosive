@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import { auth } from "@/lib/auth"
 import { getNavCounts } from "@/lib/chat-store"
 import { requireOrganization } from "@/lib/session"
+import { canManageWorkspace, isWorkspaceOwner } from "@/lib/workspace-roles"
 import { DangerZoneSettings } from "@/components/dashboard/settings/danger-zone-settings"
 
 export const metadata: Metadata = {
@@ -27,6 +28,9 @@ export default async function DangerZoneSettingsPage() {
       hasPassword={accounts.some(
         (account) => account.providerId === "credential"
       )}
+      workspaceName={organization.name}
+      canManage={canManageWorkspace(organization.role)}
+      isOwner={isWorkspaceOwner(organization.role)}
     />
   )
 }
