@@ -76,7 +76,10 @@ export default async function InvitationPage({
       }
     >
       {!signedInAs ? (
-        <InvitationSignIn invitationId={invitation.id} email={invitation.email} />
+        <InvitationSignIn
+          invitationId={invitation.id}
+          email={invitation.email}
+        />
       ) : signedInAs === invitation.email.toLowerCase() ? (
         <InvitationResponse invitationId={invitation.id} />
       ) : (

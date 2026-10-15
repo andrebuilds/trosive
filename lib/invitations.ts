@@ -1,5 +1,9 @@
 import { db } from "@/lib/db"
-import { roleLabel, workspaceRole, type WorkspaceRole } from "@/lib/workspace-roles"
+import {
+  roleLabel,
+  workspaceRole,
+  type WorkspaceRole,
+} from "@/lib/workspace-roles"
 
 /**
  * Workspace invitations, read straight from the table. Server-only.

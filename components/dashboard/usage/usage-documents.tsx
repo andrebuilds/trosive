@@ -13,7 +13,8 @@ function UsageDocuments({ documents }: { documents: UsageDocument[] }) {
   if (documents.length === 0) {
     return (
       <p className="px-5 py-6 text-sm text-muted-foreground">
-        Nothing yet. Once Trosive cites a document in an answer, it shows up here.
+        Nothing yet. Once Trosive cites a document in an answer, it shows up
+        here.
       </p>
     )
   }

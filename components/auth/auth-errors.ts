@@ -34,8 +34,7 @@ const MESSAGES: Record<string, string> = {
     "You can't invite someone with that role.",
   YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER:
     "You can't change this member's role.",
-  YOU_ARE_NOT_ALLOWED_TO_DELETE_THIS_MEMBER:
-    "You can't remove this member.",
+  YOU_ARE_NOT_ALLOWED_TO_DELETE_THIS_MEMBER: "You can't remove this member.",
   YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION:
     "This invitation was sent to a different email address.",
   INVITATION_NOT_FOUND: "This invitation has expired or was withdrawn.",

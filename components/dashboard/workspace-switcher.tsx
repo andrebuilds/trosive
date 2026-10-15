@@ -11,11 +11,7 @@ import {
 } from "lucide-react"
 
 import { organization } from "@/lib/auth-client"
-import {
-  APP_ROOT,
-  MEMBERS_ROUTE,
-  workspaceInitials,
-} from "@/lib/dashboard-nav"
+import { APP_ROOT, MEMBERS_ROUTE, workspaceInitials } from "@/lib/dashboard-nav"
 import type { Workspace } from "@/lib/session"
 import { siteConfig } from "@/lib/site-config"
 import { canManageWorkspace, roleLabel } from "@/lib/workspace-roles"

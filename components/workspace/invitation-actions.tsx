@@ -123,9 +123,7 @@ function InvitationSignIn({
 /** Signed in as the invited address: join, or turn it down. */
 function InvitationResponse({ invitationId }: { invitationId: string }) {
   const router = useRouter()
-  const [pending, setPending] = React.useState<"accept" | "reject" | null>(
-    null
-  )
+  const [pending, setPending] = React.useState<"accept" | "reject" | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
   async function respond(choice: "accept" | "reject") {

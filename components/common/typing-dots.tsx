@@ -1,6 +1,10 @@
 import { cn } from "@/lib/utils"
 
-const DELAYS = ["[animation-delay:0ms]", "[animation-delay:200ms]", "[animation-delay:400ms]"]
+const DELAYS = [
+  "[animation-delay:0ms]",
+  "[animation-delay:200ms]",
+  "[animation-delay:400ms]",
+]
 
 /**
  * Three-dot "typing…" indicator, WhatsApp style. Purely decorative CSS

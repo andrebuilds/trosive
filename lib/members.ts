@@ -128,7 +128,10 @@ export async function transferOwnership({
     if (!owner || workspaceRole(owner.role) !== "owner") return false
     if (!target || target.id === owner.id) return false
 
-    await tx.member.update({ where: { id: target.id }, data: { role: "owner" } })
+    await tx.member.update({
+      where: { id: target.id },
+      data: { role: "owner" },
+    })
     await tx.member.update({ where: { id: owner.id }, data: { role: "admin" } })
 
     return true

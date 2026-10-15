@@ -23,10 +23,7 @@ import { toast } from "@/components/ui/toast"
 import { authErrorMessage } from "@/components/auth/auth-errors"
 
 type ActionId =
-  | "clear-history"
-  | "clear-library"
-  | "delete-workspace"
-  | "delete-account"
+  "clear-history" | "clear-library" | "delete-workspace" | "delete-account"
 
 /** "12 chats" / "1 chat", and the same for documents. */
 function plural(count: number, noun: string) {

@@ -67,7 +67,9 @@ async function planDeparture(tx: Tx, userId: string) {
 
   const others = await tx.member.findMany({
     where: {
-      organizationId: { in: memberships.map((member) => member.organizationId) },
+      organizationId: {
+        in: memberships.map((member) => member.organizationId),
+      },
       userId: { not: userId },
     },
     orderBy: { createdAt: "asc" },

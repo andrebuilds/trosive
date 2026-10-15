@@ -228,7 +228,10 @@ export const auth = betterAuth({
           if (!membership) return
 
           return {
-            data: { ...session, activeOrganizationId: membership.organizationId },
+            data: {
+              ...session,
+              activeOrganizationId: membership.organizationId,
+            },
           }
         },
       },
@@ -358,7 +361,14 @@ export const auth = betterAuth({
       // there's only ever one link that works.
       cancelPendingInvitationsOnReInvite: true,
 
-      sendInvitationEmail: async ({ id, email, role, organization, inviter, invitation }) => {
+      sendInvitationEmail: async ({
+        id,
+        email,
+        role,
+        organization,
+        inviter,
+        invitation,
+      }) => {
         await sendInvitationEmail(email, id, new Date(invitation.expiresAt), {
           inviterName: inviter.user.name || inviter.user.email,
           workspaceName: organization.name,
@@ -397,16 +407,27 @@ export const auth = betterAuth({
          * The inviter may have left the workspace since; then the owner hears
          * about it instead, since someone with a say over the workspace should.
          */
-        afterAcceptInvitation: async ({ invitation, member, user, organization }) => {
+        afterAcceptInvitation: async ({
+          invitation,
+          member,
+          user,
+          organization,
+        }) => {
           after(async () => {
             const role = roleLabel(member.role)
             const [inviter, owner] = await Promise.all([
               db.member.findFirst({
-                where: { organizationId: organization.id, userId: invitation.inviterId },
+                where: {
+                  organizationId: organization.id,
+                  userId: invitation.inviterId,
+                },
                 select: { user: { select: { name: true, email: true } } },
               }),
               db.member.findFirst({
-                where: { organizationId: organization.id, role: { contains: "owner" } },
+                where: {
+                  organizationId: organization.id,
+                  role: { contains: "owner" },
+                },
                 select: { user: { select: { name: true, email: true } } },
               }),
             ])
@@ -434,7 +455,10 @@ export const auth = betterAuth({
 
             for (const result of results) {
               if (result.status === "rejected") {
-                console.error("[email] member joined email failed", result.reason)
+                console.error(
+                  "[email] member joined email failed",
+                  result.reason
+                )
               }
             }
           })

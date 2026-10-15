@@ -66,7 +66,7 @@ function EverythingInOneWorkspace() {
 
         {/* Below `md` the cards become a swipeable rail: each card is 82% of
             the content width, so the next one peeks in by about a quarter. */}
-        <div className="no-scrollbar -mx-6 mt-14 flex snap-x snap-mandatory scroll-pl-6 gap-4 overflow-x-auto px-6 md:mx-0 md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 lg:grid-cols-3">
+        <div className="-mx-6 mt-14 no-scrollbar flex snap-x snap-mandatory scroll-pl-6 gap-4 overflow-x-auto px-6 md:mx-0 md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, description }) => (
             <Card
               key={title}

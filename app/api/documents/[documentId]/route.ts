@@ -61,7 +61,10 @@ export async function DELETE(
 
   if (result === "forbidden") {
     return NextResponse.json(
-      { error: "Only whoever uploaded this document, or an admin, can delete it." },
+      {
+        error:
+          "Only whoever uploaded this document, or an admin, can delete it.",
+      },
       { status: 403 }
     )
   }
