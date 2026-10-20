@@ -1,6 +1,6 @@
 {
   "name": "trosive",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Ask questions across your documents and get answers that cite the exact passage they came from.",
   "license": "AGPL-3.0-only",
   "author": "Andrea D'Ambrosio (https://github.com/andrebuilds)",
