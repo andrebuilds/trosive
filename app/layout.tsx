@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next"
 import { Geist_Mono } from "next/font/google"
 
 import "./globals.css"
-import { siteConfig } from "@/lib/site-config"
+import { DEFAULT_TITLE } from "@/lib/seo"
+import { siteConfig, siteUrl } from "@/lib/site-config"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toast"
 import { ThemeProvider } from "@/components/theme/theme-provider"
@@ -17,14 +18,36 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
 })
 
+/**
+ * Defaults for every page. Public pages add their canonical URL and link
+ * preview through `pageMetadata` (`lib/seo.ts`); `/app` and the auth screens
+ * opt out of indexing in their layouts.
+ */
 export const metadata: Metadata = {
+  // Resolves relative URLs: canonicals, `og:url` and the preview image.
+  metadataBase: new URL(siteUrl),
   title: {
-    default: `${siteConfig.name}: Ask your documents anything`,
+    default: DEFAULT_TITLE,
     template: `%s · ${siteConfig.name}`,
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
   authors: [siteConfig.author],
+  creator: siteConfig.author.name,
+  category: "productivity",
+  // Fallback link preview for routes that don't call `pageMetadata`.
+  openGraph: {
+    type: "website",
+    siteName: siteConfig.name,
+    locale: "en_US",
+    title: DEFAULT_TITLE,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: siteConfig.xHandle,
+    creator: siteConfig.xHandle,
+  },
 }
 
 /** Tints the mobile browser bar to match the page in either theme. */

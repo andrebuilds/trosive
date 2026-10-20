@@ -31,8 +31,9 @@ sent back to the browser or logged.
 3. Match the surrounding code: naming, comment style, file layout.
 4. If you change auth options or plugins, run `npm run auth:generate` and
    `npm run db:migrate`, and commit the generated migration.
-5. For UI work, check both light and dark mode against `ui-design/`.
-6. Before pushing, make sure these pass:
+5. For UI work, check light and dark mode, and a phone-sized screen.
+6. Before pushing, make sure the same checks CI runs pass (`npm run format`
+   fixes most Prettier complaints):
 
    ```bash
    npm run lint
@@ -45,8 +46,10 @@ sent back to the browser or logged.
 
 ## Commit messages
 
-Write them in the imperative mood ("Add passage search filters", not "Added…"),
-with a short first line and detail in the body when needed.
+Start with a type, then a short imperative summary
+([Conventional Commits](https://www.conventionalcommits.org/)):
+`feat: add passage search filters`, `fix: …`, `docs: …`, `refactor: …`. Add
+detail in the body when needed.
 
 ## License
 

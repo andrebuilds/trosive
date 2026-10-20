@@ -17,6 +17,9 @@ answers are billed by Anthropic to that key.
 
 [![CI](https://github.com/andrebuilds/trosive/actions/workflows/ci.yml/badge.svg)](https://github.com/andrebuilds/trosive/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/andrebuilds)
+
+![Trosive landing page: "Ask your documents anything. Get answers with receipts."](public/screenshot-trosive-readme.png)
 
 ## Features
 
@@ -29,8 +32,9 @@ answers are billed by Anthropic to that key.
   the sidebar. Invite teammates by email as admins or members; everyone in a
   workspace shares its library, chats and API key. Members delete only what
   they made, owners and admins anything.
-- **Admin console** — users, workspaces, an append-only activity log, sign-up
-  and maintenance switches, and chat retention.
+- **Admin console** — usage overview, users (add, deactivate, reactivate), an
+  append-only activity log, sign-up and maintenance switches, and chat
+  retention.
 - **Bring your own key** — each workspace saves its own Anthropic API key,
   checked with Anthropic before it's stored and encrypted at rest. No plans,
   no limits, nothing to bill.
@@ -42,8 +46,9 @@ Neon Postgres · Anthropic API · Resend
 
 ## Getting started
 
-Requirements: Node.js 22+ and a Postgres database
-([Neon](https://neon.tech) is what the app is built against).
+Requirements: Node.js 22+ and a [Neon](https://neon.tech) Postgres database (the
+free plan is enough). The app connects through Neon's serverless driver, so a
+plain Postgres server won't work without changing `lib/db.ts`.
 
 ```bash
 git clone https://github.com/andrebuilds/trosive.git
@@ -76,7 +81,8 @@ copy both connection strings from the dashboard:
 
 - `BETTER_AUTH_SECRET` — generate with `openssl rand -base64 32`.
 - `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` — `http://localhost:3000` locally,
-  your domain in production.
+  your domain in production. `NEXT_PUBLIC_APP_URL` is also the address used in
+  the sitemap, robots.txt and link previews, so set it before you deploy.
 
 ### Anthropic API keys (bring your own key)
 
@@ -126,14 +132,24 @@ Swap `localhost:3000` for your domain in production.
 
 ### Admin console
 
-Set `ADMIN_USER_IDS` to your user id to bootstrap the first admin, then promote
-others from `/app/admin` and clear the variable.
+Set `ADMIN_USER_IDS` to your user id (comma-separated for more than one) to
+open `/app/admin` to you. There's no "make admin" button in the console yet, so
+keep your id in the list: to add another admin, add their id too, or set
+`role = 'admin'` on their row in the `user` table.
 
 ### Data retention
 
 The retention window is set in the admin console. A scheduler purges expired
 chats by calling `POST /api/cron/retention` with
-`Authorization: Bearer $CRON_SECRET`.
+`Authorization: Bearer $CRON_SECRET`. Once a day is enough, for example:
+
+```bash
+curl -X POST https://your-domain.com/api/cron/retention \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Run it from a Railway cron service, a scheduled GitHub Actions workflow or any
+other scheduler.
 
 ## Scripts
 
@@ -162,6 +178,11 @@ If you run a modified version as a public service, the AGPL requires you to
 offer your users its source. Point `repoUrl` in
 [`lib/site-config.ts`](lib/site-config.ts) at your fork — it's linked from the
 site footer.
+
+Running your own public instance? Also change the name, contact emails and
+author in `lib/site-config.ts`, and replace the Privacy, Terms and Cookies
+pages in `app/(marketing)/`: they describe trosive.com and the person who runs
+it, not you.
 
 ## Contributing
 

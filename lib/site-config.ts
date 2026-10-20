@@ -13,14 +13,35 @@ export type NavItem = {
 
 export const siteConfig = {
   name: "Trosive",
+  /** Also the search snippet, so it stays under ~155 characters. */
   description:
-    "Ask your documents anything and get answers that cite the exact passage behind every claim. Open source and free, with no limits: bring your own Anthropic API key.",
+    "Ask AI questions across your PDFs, Word files and notes, and get answers that cite the exact passage. Free and open source: bring your own Anthropic key.",
   /** AGPL §13: whoever runs this as a service must offer its source, so point this at your fork. */
   repoUrl: "https://github.com/andrebuilds/trosive",
   license: "AGPL-3.0",
   email: "hello@trosive.com",
+  /** Privacy requests and anything about the Terms. */
+  legalEmail: "legal@trosive.com",
   author: { name: "Andrea D'Ambrosio", url: "https://github.com/andrebuilds" },
+  /** X (Twitter) handle, credited on link previews shared there. */
+  xHandle: "@andrebuilds",
 }
+
+/**
+ * The public origin, without a trailing slash, for URLs that have to be
+ * absolute: `metadataBase`, the sitemap, robots.txt and llms.txt.
+ */
+export const siteUrl = (
+  process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+).replace(/\/$/, "")
+
+/** Public pages worth indexing. Everything under `/app` is behind sign-in. */
+export const publicPages = [
+  { path: "/", label: "Home" },
+  { path: "/privacy", label: "Privacy Policy" },
+  { path: "/terms", label: "Terms of Service" },
+  { path: "/cookies", label: "Cookie Policy" },
+]
 
 export type NavGroup = {
   title: string

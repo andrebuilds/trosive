@@ -6,8 +6,8 @@ Please **don't** open a public issue for security problems.
 
 Report them privately through GitHub's
 [private vulnerability reporting](https://github.com/andrebuilds/trosive/security/advisories/new),
-or by email to [hello@trosive.com](mailto:hello@trosive.com). Include what you
-found, how to reproduce it, and the impact you expect.
+or by email to [security@trosive.com](mailto:security@trosive.com). Include what
+you found, how to reproduce it, and the impact you expect.
 
 You should get a first response within a week. Once a fix is released, the
 advisory is published with credit to you unless you'd rather stay anonymous.
