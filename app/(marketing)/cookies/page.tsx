@@ -43,13 +43,17 @@ const STORED = [
 /** `/cookies`. */
 export default function CookiesPage() {
   return (
-    <LegalPage title="Cookie Policy" updated="20 October 2026" current="/cookies">
+    <LegalPage
+      title="Cookie Policy"
+      updated="20 October 2026"
+      current="/cookies"
+    >
       <LegalSection id="summary" title="Only what the app needs">
         <p>
           {siteConfig.name} uses only the cookies it needs to work: one to keep
           you signed in, and a few that remember your choices. There are no
-          analytics, advertising or tracking cookies, and nothing is shared
-          with third parties for marketing.
+          analytics, advertising or tracking cookies, and nothing is shared with
+          third parties for marketing.
         </p>
         <p>
           Because all of them are strictly necessary, the law doesn&apos;t

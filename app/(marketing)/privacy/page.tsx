@@ -45,20 +45,23 @@ export default async function PrivacyPage() {
   const email = siteConfig.legalEmail
 
   return (
-    <LegalPage title="Privacy Policy" updated="20 October 2026" current="/privacy">
+    <LegalPage
+      title="Privacy Policy"
+      updated="20 October 2026"
+      current="/privacy"
+    >
       <LegalSection id="who" title="Who we are">
         <p>
-          {siteConfig.name} at trosive.com is run by{" "}
-          {siteConfig.author.name}, an individual based in Italy
-          (&quot;we&quot;, &quot;us&quot;), who is the data controller for
-          the personal data described here. You can reach us at{" "}
-          <a href={`mailto:${email}`}>{email}</a>.
+          {siteConfig.name} at trosive.com is run by {siteConfig.author.name},
+          an individual based in Italy (&quot;we&quot;, &quot;us&quot;), who is
+          the data controller for the personal data described here. You can
+          reach us at <a href={`mailto:${email}`}>{email}</a>.
         </p>
         <p>
-          {siteConfig.name} is also open source software that anyone can run
-          on their own servers. This policy covers trosive.com only. If you use
-          a copy run by someone else, whoever runs it is responsible for your
-          data there.
+          {siteConfig.name} is also open source software that anyone can run on
+          their own servers. This policy covers trosive.com only. If you use a
+          copy run by someone else, whoever runs it is responsible for your data
+          there.
         </p>
       </LegalSection>
 
@@ -85,14 +88,14 @@ export default async function PrivacyPage() {
         <ul>
           <li>
             <strong>Your account:</strong> your name, email address and profile
-            picture, if you add one. If you set a password, we store only a
-            hash of it. If you sign in with Google or GitHub, we receive your
-            name, email address and profile picture from them.
+            picture, if you add one. If you set a password, we store only a hash
+            of it. If you sign in with Google or GitHub, we receive your name,
+            email address and profile picture from them.
           </li>
           <li>
             <strong>Workspaces:</strong> their names, who is a member and in
-            what role, and invitations, including the email address someone
-            was invited at and who invited them.
+            what role, and invitations, including the email address someone was
+            invited at and who invited them.
           </li>
           <li>
             <strong>Your content:</strong> the documents you upload (the
@@ -145,16 +148,16 @@ export default async function PrivacyPage() {
 
       <LegalSection id="anthropic" title="Your documents and Anthropic">
         <p>
-          Answers are written by Claude, a model made by Anthropic. When you
-          ask a question, {siteConfig.name} sends Anthropic the question, the
+          Answers are written by Claude, a model made by Anthropic. When you ask
+          a question, {siteConfig.name} sends Anthropic the question, the
           earlier messages in that chat and the content of the documents
           attached to it. Smaller jobs, such as naming a chat or summarizing a
           document, send Anthropic that chat or document too.
         </p>
         <p>
-          These requests are made with the API key saved for your workspace,
-          so they&apos;re covered by the agreement between that key&apos;s
-          owner and Anthropic, and processed by Anthropic in the United States.
+          These requests are made with the API key saved for your workspace, so
+          they&apos;re covered by the agreement between that key&apos;s owner
+          and Anthropic, and processed by Anthropic in the United States.
           Anthropic doesn&apos;t train its models on API data by default. How
           long it keeps requests is set out in{" "}
           <a
@@ -173,20 +176,20 @@ export default async function PrivacyPage() {
 
       <LegalSection id="who-sees-it" title="Who can see your data">
         <p>
-          A workspace is shared: everyone in it can see its documents and
-          chats, and use its API key. Its owner and admins decide who is in it.
+          A workspace is shared: everyone in it can see its documents and chats,
+          and use its API key. Its owner and admins decide who is in it.
         </p>
         <p>
-          We can access the database to operate the service, and look at
-          your data only to keep the service running, fix a problem
-          you&apos;ve reported, deal with abuse, or when the law requires it.
+          We can access the database to operate the service, and look at your
+          data only to keep the service running, fix a problem you&apos;ve
+          reported, deal with abuse, or when the law requires it.
         </p>
       </LegalSection>
 
       <LegalSection id="providers" title="Service providers">
         <p>
-          These companies process data on our behalf, only to provide their
-          part of the service:
+          These companies process data on our behalf, only to provide their part
+          of the service:
         </p>
         <ul>
           {PROVIDERS.map((provider) => (
@@ -204,11 +207,10 @@ export default async function PrivacyPage() {
           picture hosted by GitHub, so your browser contacts GitHub to load it.
         </p>
         <p>
-          Some of these providers are US companies, and Anthropic processes
-          data in the United States. Where personal data leaves the European
-          Economic Area, the transfer relies on the EU-US Data Privacy
-          Framework or on the European Commission&apos;s Standard Contractual
-          Clauses.
+          Some of these providers are US companies, and Anthropic processes data
+          in the United States. Where personal data leaves the European Economic
+          Area, the transfer relies on the EU-US Data Privacy Framework or on
+          the European Commission&apos;s Standard Contractual Clauses.
         </p>
       </LegalSection>
 
@@ -221,16 +223,16 @@ export default async function PrivacyPage() {
               : `are deleted automatically ${chatRetentionMonths} months after their last message, or earlier if you delete them.`}
           </li>
           <li>
-            <strong>Documents</strong> are kept until someone allowed to
-            deletes them, or the workspace is deleted.
+            <strong>Documents</strong> are kept until someone allowed to deletes
+            them, or the workspace is deleted.
           </li>
           <li>
             <strong>Your account</strong> is kept until you delete it. Deleting
-            it removes your profile, your sessions and every workspace where
-            you are the only member, straight away. In workspaces you share,
-            the documents and chats you added stay with the other members, as
-            part of their shared work. Ask a workspace admin, or us, if you
-            want them removed.
+            it removes your profile, your sessions and every workspace where you
+            are the only member, straight away. In workspaces you share, the
+            documents and chats you added stay with the other members, as part
+            of their shared work. Ask a workspace admin, or us, if you want them
+            removed.
           </li>
           <li>
             <strong>Sessions</strong> expire 7 days after you last used them.
@@ -249,11 +251,11 @@ export default async function PrivacyPage() {
       <LegalSection id="rights" title="Your rights">
         <p>
           Under the GDPR you can ask to access, correct, delete or receive a
-          copy of your personal data, and to restrict or object to how
-          we use it. You can change your name and email address, and delete
-          your account, in the app&apos;s settings. For anything else, write
-          to <a href={`mailto:${email}`}>{email}</a>. We&apos;ll reply within
-          one month.
+          copy of your personal data, and to restrict or object to how we use
+          it. You can change your name and email address, and delete your
+          account, in the app&apos;s settings. For anything else, write to{" "}
+          <a href={`mailto:${email}`}>{email}</a>. We&apos;ll reply within one
+          month.
         </p>
         <p>
           You can also complain to a data protection authority: in Italy, the{" "}

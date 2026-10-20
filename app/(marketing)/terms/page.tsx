@@ -15,7 +15,11 @@ export default function TermsPage() {
   const email = siteConfig.legalEmail
 
   return (
-    <LegalPage title="Terms of Service" updated="20 October 2026" current="/terms">
+    <LegalPage
+      title="Terms of Service"
+      updated="20 October 2026"
+      current="/terms"
+    >
       <LegalSection id="about" title="About these terms">
         <p>
           These terms cover your use of {siteConfig.name} at trosive.com (the
@@ -61,23 +65,22 @@ export default function TermsPage() {
         <p>
           Your documents and chats live in workspaces, which can be shared.
           Everyone in a workspace can see its documents and chats and use its
-          API key. The owner and admins decide who is in it, can remove
-          members, and can delete its content or the whole workspace. Only
-          invite people you trust with what&apos;s in it.
+          API key. The owner and admins decide who is in it, can remove members,
+          and can delete its content or the whole workspace. Only invite people
+          you trust with what&apos;s in it.
         </p>
         <p>
           What you add to a shared workspace is part of that workspace. If you
-          leave it or delete your account, it stays there for the other
-          members, unless an admin removes it.
+          leave it or delete your account, it stays there for the other members,
+          unless an admin removes it.
         </p>
       </LegalSection>
 
       <LegalSection id="api-key" title="Your Anthropic API key">
         <p>
-          {siteConfig.name} is free, and answers are written by Anthropic
-          using the API key saved for your workspace. Anthropic bills the
-          owner of that key for every answer, under Anthropic&apos;s own terms
-          and{" "}
+          {siteConfig.name} is free, and answers are written by Anthropic using
+          the API key saved for your workspace. Anthropic bills the owner of
+          that key for every answer, under Anthropic&apos;s own terms and{" "}
           <a
             href="https://www.anthropic.com/legal/aup"
             target="_blank"
@@ -85,9 +88,9 @@ export default function TermsPage() {
           >
             usage policy
           </a>
-          , which you also have to follow. We aren&apos;t responsible for
-          those charges, so set a spending limit in your Anthropic account if
-          you want one.
+          , which you also have to follow. We aren&apos;t responsible for those
+          charges, so set a spending limit in your Anthropic account if you want
+          one.
         </p>
       </LegalSection>
 
@@ -95,13 +98,13 @@ export default function TermsPage() {
         <p>
           You keep every right you have in the documents you upload and the
           questions you ask. You give us permission to store, process and
-          display them, and to send them to Anthropic, only as needed to run
-          the service for you and the people in your workspaces.
+          display them, and to send them to Anthropic, only as needed to run the
+          service for you and the people in your workspaces.
         </p>
         <p>
           Only upload content you have the right to use and to share with
-          Anthropic. You&apos;re responsible for it, including any personal
-          data about other people it contains.
+          Anthropic. You&apos;re responsible for it, including any personal data
+          about other people it contains.
         </p>
       </LegalSection>
 
@@ -119,8 +122,8 @@ export default function TermsPage() {
         <ul>
           <li>break the law, or infringe anyone&apos;s rights;</li>
           <li>
-            upload malware, or content that is illegal or that you have no
-            right to share;
+            upload malware, or content that is illegal or that you have no right
+            to share;
           </li>
           <li>
             try to access other people&apos;s accounts or workspaces, or get
@@ -133,8 +136,8 @@ export default function TermsPage() {
         </ul>
         <p>
           We may suspend or close an account that breaks these rules. Where we
-          reasonably can, we&apos;ll tell you first and give you a chance to
-          fix things.
+          reasonably can, we&apos;ll tell you first and give you a chance to fix
+          things.
         </p>
       </LegalSection>
 
@@ -142,13 +145,13 @@ export default function TermsPage() {
         <p>
           The service is free and provided as it is. We work to keep it running
           and your data safe, but we can&apos;t promise it will always be
-          available or free of errors, so keep your own copies of documents
-          that matter to you.
+          available or free of errors, so keep your own copies of documents that
+          matter to you.
         </p>
         <p>
-          We may change or add features, and we may stop running the service.
-          If we decide to stop, we&apos;ll give you at least 30 days&apos;
-          notice by email so you can take your documents with you.
+          We may change or add features, and we may stop running the service. If
+          we decide to stop, we&apos;ll give you at least 30 days&apos; notice
+          by email so you can take your documents with you.
         </p>
       </LegalSection>
 
@@ -167,7 +170,8 @@ export default function TermsPage() {
         <p>
           You can stop using the service and delete your account at any time
           from Settings → Danger zone. What happens to your data then is
-          described in the <Link href="/privacy#retention">Privacy Policy</Link>.
+          described in the <Link href="/privacy#retention">Privacy Policy</Link>
+          .
         </p>
       </LegalSection>
 
