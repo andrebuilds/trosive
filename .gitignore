@@ -39,6 +39,5 @@ next-env.d.ts
 # prisma generated client
 /generated/prisma
 
-# private notes — move to .git/info/exclude before the repo goes public
-*.private.md
+# neon cli project context
 .neon
